@@ -9,46 +9,30 @@
     <script type="module">
         import init, { wasm_set_rules_dir, wasm_get_version, wasm_set_preference, wasm_set_mathml, wasm_get_spoken_text, wasm_get_braille } from './pkg/mathcat_web.js';
 
-        async function set_mathcat_pref(pref, value) {
-          try {
-            await wasm_set_preference(pref, value);
-            console.log(`${pref} Preference set to ${value}`);
-          } catch (error) {
-            console.error(`Error setting ${pref} preference to ${value}: ${error}`);
-          }
-        }
-
         async function run() {
             await init();
 
             console.log('MathCAT Version:', wasm_get_version());
 
             try {
+                const sampleMathML = `<math><mrow><mi>x</mi><mo>=</mo><msup><mi>y</mi><mn>2</mn></msup></mrow></math>`;
+
                 await wasm_set_rules_dir('Rules');
                 console.log('Rules directory set');
 
-                // await set_mathcat_pref('Language', 'en');
-                await set_mathcat_pref('SpeechStyle', 'ClearSpeak');
+                await wasm_set_preference('SpeechStyle', 'ClearSpeak');
 
-                try {
-                    const canonicalMathML = await wasm_set_mathml(`<math><mrow><mi>x</mi><mo>=</mo><msup><mi>y</mi><mn>2</mn></msup></mrow></math>`);
-                    console.log('Canonical MathML:', canonicalMathML);
-                    const spokenText = await wasm_get_spoken_text();
-                    console.log('Spoken Text:', spokenText);
-                } catch (error) {
-                    console.error('Error processing MathML:', error);
-                }
+                const canonicalMathML = await wasm_set_mathml(sampleMathML);
+                console.log('Canonical MathML:', canonicalMathML);
 
-                try {
-                    const braille = await wasm_get_braille('');
-                    console.log('Braille:', braille);
-                } catch (error) {
-                    console.error('Error getting braille:', error);
-                }
+                const spokenText = await wasm_get_spoken_text();
+                console.log('Spoken Text:', spokenText);
+
+                const braille = await wasm_get_braille('');
+                console.log('Braille:', braille);
 
             } catch (error) {
-                console.error('Error setting rules directory:', error);
-                console.error('Cannot continue, rules directory must be set before calling other MathCAT functions.')
+                console.error('Error using MathCAT: ', error);
             }
         }
 

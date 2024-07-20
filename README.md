@@ -70,35 +70,24 @@ In the following example, note:
             console.log('MathCAT Version:', wasm_get_version());
 
             try {
+                const sampleMathML = `<math><mrow><mi>x</mi><mo>=</mo><msup><mi>y</mi><mn>2</mn></msup></mrow></math>`;
+
                 await wasm_set_rules_dir('Rules');
                 console.log('Rules directory set');
 
-                try {
-                    await wasm_set_preference('SpeechStyle', 'ClearSpeak');
-                    console.log('SpeechStyle Preference set');
-                } catch (error) {
-                    console.error('Error setting SpeechStyle preference:', error);
-                }
+                await wasm_set_preference('SpeechStyle', 'ClearSpeak');
 
-                try {
-                    const canonicalMathML = await wasm_set_mathml(`<math><mrow><mi>x</mi><mo>=</mo><msup><mi>y</mi><mn>2</mn></msup></mrow></math>`);
-                    console.log('Canonical MathML:', canonicalMathML);
-                    const spokenText = await wasm_get_spoken_text();
-                    console.log('Spoken Text:', spokenText);
-                } catch (error) {
-                    console.error('Error processing MathML:', error);
-                }
+                const canonicalMathML = await wasm_set_mathml(sampleMathML);
+                console.log('Canonical MathML:', canonicalMathML);
 
-                try {
-                    const braille = await wasm_get_braille('');
-                    console.log('Braille:', braille);
-                } catch (error) {
-                    console.error('Error getting braille:', error);
-                }
+                const spokenText = await wasm_get_spoken_text();
+                console.log('Spoken Text:', spokenText);
+
+                const braille = await wasm_get_braille('');
+                console.log('Braille:', braille);
 
             } catch (error) {
-                console.error('Error setting rules directory:', error);
-                console.error('Cannot continue, rules directory must be set before calling other MathCAT functions.')
+                console.error('Error using MathCAT: ', error);
             }
         }
 
@@ -107,12 +96,11 @@ In the following example, note:
   </body>
 </html>
 ```
-Which should produce the following console output:
+Which should produce something similar to the following console output:
 ```
 [Log] MathCAT Version: – "0.6.4" (index.html, line 15)
-[Log] Rules directory set (index.html, line 19)
-[Log] SpeechStyle Preference set (index.html, line 23)
-[Log] Canonical MathML: – " <math id='Ms9sz8xr-0' data-id-added='true'>↵  <mrow id='Ms9sz8xr-1' data-id-added='true'>…" (index.html, line 30)
-[Log] Spoken Text: – "x is equal to y squared" (index.html, line 32)
-[Log] Braille: – "⠭⠀⠨⠅⠀⠽⠘⠆" (index.html, line 39)
+[Log] Rules directory set (index.html, line 21)
+[Log] Canonical MathML: – " <math id='Mu661gbj-0' data-id-added='true'>…" (index.html, line 26)
+[Log] Spoken Text: – "x is equal to y squared" (index.html, line 29)
+[Log] Braille: – "⠭⠀⠨⠅⠀⠽⠘⠆" (index.html, line 32)
 ```
