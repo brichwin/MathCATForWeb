@@ -9,6 +9,15 @@
     <script type="module">
         import init, { wasm_set_rules_dir, wasm_get_version, wasm_set_preference, wasm_set_mathml, wasm_get_spoken_text, wasm_get_braille } from './pkg/mathcat_web.js';
 
+        async function set_mathcat_pref(pref, value) {
+          try {
+            await wasm_set_preference(pref, value);
+            console.log(`${pref} Preference set to ${value}`);
+          } catch (error) {
+            console.error(`Error setting ${pref} preference to ${value}: ${error}`);
+          }
+        }
+
         async function run() {
             await init();
 
@@ -18,12 +27,8 @@
                 await wasm_set_rules_dir('Rules');
                 console.log('Rules directory set');
 
-                try {
-                    await wasm_set_preference('SpeechStyle', 'ClearSpeak');
-                    console.log('SpeechStyle Preference set');
-                } catch (error) {
-                    console.error('Error setting SpeechStyle preference:', error);
-                }
+                // await set_mathcat_pref('Language', 'en');
+                await set_mathcat_pref('SpeechStyle', 'ClearSpeak');
 
                 try {
                     const canonicalMathML = await wasm_set_mathml(`<math><mrow><mi>x</mi><mo>=</mo><msup><mi>y</mi><mn>2</mn></msup></mrow></math>`);
