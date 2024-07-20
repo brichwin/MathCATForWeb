@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MathCAT Web</title>
+</head>
+<body>
+    <script type="module">
+        import init, { wasm_set_rules_dir, wasm_get_version, wasm_set_preference, wasm_set_mathml, wasm_get_spoken_text, wasm_get_braille } from './pkg/mathcat_web.js';
+
+        async function run() {
+            await init();
+            
+            try {
+                await wasm_set_rules_dir('path/to/rules/dir');
+                console.log('Rules directory set');
+            } catch (error) {
+                console.error('Error setting rules directory:', error);
+            }
+
+            console.log('Version:', wasm_get_version());
+
+            try {
+                await wasm_set_preference('Language', 'en');
+                console.log('Preference set');
+            } catch (error) {
+                console.error('Error setting preference:', error);
+            }
+
+            try {
+                const canonicalMathML = await wasm_set_mathml('<math><mn>1</mn></math>');
+                console.log('Canonical MathML:', canonicalMathML);
+                const spokenText = await wasm_get_spoken_text();
+                console.log('Spoken Text:', spokenText);
+            } catch (error) {
+                console.error('Error processing MathML:', error);
+            }
+
+            try {
+                const braille = await wasm_get_braille('someNodeID');
+                console.log('Braille:', braille);
+            } catch (error) {
+                console.error('Error getting braille:', error);
+            }
+        }
+
+        run();
+    </script>
+</body>
+</html>
