@@ -18,22 +18,24 @@
                 const sampleMathML = `<math><mrow><mfrac><mi>x</mi><mi>y</mi></mfrac><mo>+</mo><mn>2</mn></mrow></math>`
 
                 mathCAT.setRulesDir('Rules')
-                console.log('Rules directory set')
+                console.log(`Rules directory set`)
 
                 mathCAT.setPreference('SpeechStyle', 'ClearSpeak')
                 mathCAT.setPreference('Verbosity', 'Verbose')
+                console.log(`Preferences set`)
 
+                console.log(`Setting MathML`)
                 const canonicalMathML = mathCAT.setMathML(sampleMathML)
-                console.log('Canonical MathML:', canonicalMathML)
+                console.log(`Canonical MathML: ${canonicalMathML}`)
 
                 const spokenText = mathCAT.getSpokenText()
-                console.log('Spoken Text:', spokenText)
+                console.log(`Spoken Text: ${spokenText}`)
 
                 const braille = mathCAT.getBraille('')
-                console.log('Braille:', braille)
+                console.log(`Braille: ${braille}`)
 
             } catch (error) {
-                console.error('Error using MathCAT: ', error)
+                console.error(`Error using MathCAT: ${error}`)
             }
         }
 
