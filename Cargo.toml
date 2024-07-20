@@ -2,6 +2,9 @@
 name = "mathcat_web"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+description = "wasm/javascript interface for MathCAT"
+repository = "https://github.com/brichwin/MathCATForWeb"
 
 [features]
 wasm = []

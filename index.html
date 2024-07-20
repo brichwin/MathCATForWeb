@@ -7,36 +7,37 @@
 </head>
 <body>
     <script type="module">
-        import init, { wasm_set_rules_dir, wasm_get_version, wasm_set_preference, wasm_set_mathml, wasm_get_spoken_text, wasm_get_braille } from './pkg/mathcat_web.js';
+        import init, { MathCAT as mathCAT } from './pkg/mathcat_web.js'
 
         async function run() {
-            await init();
+            await init()
 
-            console.log('MathCAT Version:', wasm_get_version());
+            console.log('MathCAT Version:', mathCAT.getVersion())
 
             try {
-                const sampleMathML = `<math><mrow><mi>x</mi><mo>=</mo><msup><mi>y</mi><mn>2</mn></msup></mrow></math>`;
+                const sampleMathML = `<math><mrow><mfrac><mi>x</mi><mi>y</mi></mfrac><mo>+</mo><mn>2</mn></mrow></math>`
 
-                await wasm_set_rules_dir('Rules');
-                console.log('Rules directory set');
+                mathCAT.setRulesDir('Rules')
+                console.log('Rules directory set')
 
-                await wasm_set_preference('SpeechStyle', 'ClearSpeak');
+                mathCAT.setPreference('SpeechStyle', 'ClearSpeak')
+                mathCAT.setPreference('Verbosity', 'Verbose')
 
-                const canonicalMathML = await wasm_set_mathml(sampleMathML);
-                console.log('Canonical MathML:', canonicalMathML);
+                const canonicalMathML = mathCAT.setMathML(sampleMathML)
+                console.log('Canonical MathML:', canonicalMathML)
 
-                const spokenText = await wasm_get_spoken_text();
-                console.log('Spoken Text:', spokenText);
+                const spokenText = mathCAT.getSpokenText()
+                console.log('Spoken Text:', spokenText)
 
-                const braille = await wasm_get_braille('');
-                console.log('Braille:', braille);
+                const braille = mathCAT.getBraille('')
+                console.log('Braille:', braille)
 
             } catch (error) {
-                console.error('Error using MathCAT: ', error);
+                console.error('Error using MathCAT: ', error)
             }
         }
 
-        run();
+        run()
     </script>
 </body>
 </html>

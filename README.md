@@ -12,7 +12,7 @@ Visit [the MathCAT project page](https://nsoiffer.github.io/MathCAT/) for more i
   ```
   ParentFolder/
   ├── MathCAT/
-  ├── MathCATForWeb/
+  └─── MathCATForWeb/
   ```
 - Install 'wasm-pack' (if not already installed):
   ```sh
@@ -25,7 +25,7 @@ Visit [the MathCAT project page](https://nsoiffer.github.io/MathCAT/) for more i
   - If it builds successfully, you should get a message like: "Your wasm pkg is ready to publish at .../MathCATForWeb/pkg."
 
 ## Files in the `pkg` folder.
-When you build your project using wasm-pack, the pkg folder contains several files. Here is a description of each file:
+After the project is built using wasm-pack, the pkg folder contains several files. Here is a description of each file:
  - mathcat_web_bg.wasm: The WebAssembly binary. This is the core file that contains the compiled WebAssembly code.
  - mathcat_web.js: This JavaScript file provides the bindings to interact with the WebAssembly module. It typically includes functions to initialize the WebAssembly instance and to call its exports.
  - mathcat_web_bg.js: This is a JavaScript glue code file that handles the low-level interaction between the WebAssembly binary and JavaScript.
@@ -62,32 +62,33 @@ In the following example, note:
 </head>
 <body>
     <script type="module">
-        import init, { wasm_set_rules_dir, wasm_get_version, wasm_set_preference, wasm_set_mathml, wasm_get_spoken_text, wasm_get_braille } from './mathCATForWeb/mathcat_web.js';
+        import init, { MathCAT as mathCAT } from './mathCATForWeb/mathcat_web.js';
 
-        async function run() {
-            await init();
+         async function run() {
+            await init()
 
-            console.log('MathCAT Version:', wasm_get_version());
+            console.log('MathCAT Version:', mathCAT.getVersion())
 
             try {
-                const sampleMathML = `<math><mrow><mi>x</mi><mo>=</mo><msup><mi>y</mi><mn>2</mn></msup></mrow></math>`;
+                const sampleMathML = `<math><mrow><mfrac><mi>x</mi><mi>y</mi></mfrac><mo>+</mo><mn>2</mn></mrow></math>`
 
-                await wasm_set_rules_dir('Rules');
-                console.log('Rules directory set');
+                mathCAT.setRulesDir('Rules')
+                console.log('Rules directory set')
 
-                await wasm_set_preference('SpeechStyle', 'ClearSpeak');
+                mathCAT.setPreference('SpeechStyle', 'ClearSpeak')
+                mathCAT.setPreference('Verbosity', 'Verbose')
 
-                const canonicalMathML = await wasm_set_mathml(sampleMathML);
-                console.log('Canonical MathML:', canonicalMathML);
+                const canonicalMathML = mathCAT.setMathML(sampleMathML)
+                console.log('Canonical MathML:', canonicalMathML)
 
-                const spokenText = await wasm_get_spoken_text();
-                console.log('Spoken Text:', spokenText);
+                const spokenText = mathCAT.getSpokenText()
+                console.log('Spoken Text:', spokenText)
 
-                const braille = await wasm_get_braille('');
-                console.log('Braille:', braille);
+                const braille = mathCAT.getBraille('')
+                console.log('Braille:', braille)
 
             } catch (error) {
-                console.error('Error using MathCAT: ', error);
+                console.error('Error using MathCAT: ', error)
             }
         }
 
@@ -100,7 +101,7 @@ Which should produce something similar to the following console output:
 ```
 [Log] MathCAT Version: – "0.6.4" (index.html, line 15)
 [Log] Rules directory set (index.html, line 21)
-[Log] Canonical MathML: – " <math id='Mu661gbj-0' data-id-added='true'>…" (index.html, line 26)
-[Log] Spoken Text: – "x is equal to y squared" (index.html, line 29)
-[Log] Braille: – "⠭⠀⠨⠅⠀⠽⠘⠆" (index.html, line 32)
+[Log] Canonical MathML: – " <math id='Msdhne7g-0' data-id-added='true'>…" (index.html, line 27)
+[Log] Spoken Text: – "x over y plus 2" (index.html, line 30)
+[Log] Braille: – "⠹⠭⠌⠽⠼⠬⠆" (index.html, line 33)
 ```
