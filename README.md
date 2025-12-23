@@ -18,7 +18,7 @@ rustc 1.92.0 (ded5c06cf 2025-12-08)
   ```
   ParentFolder/
   ├── MathCAT/
-  └─── MathCATForWeb/
+  └── MathCATForWeb/
   ```
 - Install 'wasm-pack' (if not already installed):
   ```sh
