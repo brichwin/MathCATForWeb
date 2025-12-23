@@ -5,7 +5,13 @@ MathCAT is a library that supports conversion of MathML to speech and braille am
 This project is a rough stab at adding a WebAssembly/JavaScript interface to MathCAT.
 Visit [the MathCAT project page](https://nsoiffer.github.io/MathCAT/) for more info or if you want to play around with MathCAT's capabilities, [try out the demo](https://nsoiffer.github.io/MathCATDemo/).
 
+## Required rustc version
+
+MathCAT uses rust features that require a recent rustc version:
+rustc 1.92.0 (ded5c06cf 2025-12-08)
+
 ## To build this project:
+
 - In a folder, download or git clone MathCAT
 - In the same folder, download or git clone MathCATForWeb
 - Your folder structure should look like this:
