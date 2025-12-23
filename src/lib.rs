@@ -1,3 +1,4 @@
+extern crate console_error_panic_hook;
 use wasm_bindgen::prelude::*;
 use libmathcat::*;
 
@@ -8,6 +9,7 @@ pub struct MathCAT;
 #[allow(non_snake_case)]
   impl MathCAT {
     pub fn setRulesDir(dir: String) -> Result<(), JsValue> {
+      console_error_panic_hook::set_once();
       set_rules_dir(dir).map_err(|e| JsValue::from_str(&e.to_string()))
   }
 
@@ -17,6 +19,10 @@ pub struct MathCAT;
 
   pub fn setPreference(name: String, value: String) -> Result<(), JsValue> {
       set_preference(name, value).map_err(|e| JsValue::from_str(&e.to_string()))
+  }
+
+  pub fn getPreference(name: String) -> Result<String, JsValue> {
+      get_preference(name).map_err(|e| JsValue::from_str(&e.to_string()))
   }
 
   pub fn setMathML(mathml_str: String) -> Result<String, JsValue> {
