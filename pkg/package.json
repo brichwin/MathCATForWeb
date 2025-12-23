@@ -1,0 +1,21 @@
+{
+  "name": "mathcat_web",
+  "type": "module",
+  "description": "wasm/javascript interface for MathCAT",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brichwin/MathCATForWeb"
+  },
+  "files": [
+    "mathcat_web_bg.wasm",
+    "mathcat_web.js",
+    "mathcat_web.d.ts"
+  ],
+  "main": "mathcat_web.js",
+  "types": "mathcat_web.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
