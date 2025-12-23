@@ -1,7 +1,7 @@
 [package]
 name = "mathcat_web"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
 license = "MIT"
 description = "wasm/javascript interface for MathCAT"
 repository = "https://github.com/brichwin/MathCATForWeb"
@@ -16,7 +16,6 @@ crate-type = ["cdylib"]
 wasm-bindgen = "0.2.78"
 mathcat = { path = "../MathCAT/", features = ["include-zip"] }
 console_error_panic_hook = "0.1.7"
-
 
 [profile.release]
 lto = true  # Use full LTO for maximum optimization
