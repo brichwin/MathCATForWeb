@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MathCAT Web Demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@4.0.0-beta.7/tex-mml-chtml.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 0;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 10px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .container h2 {
+            margin-top: 3px;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .input-section {
+            margin-bottom: 5px;
+        }
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .output-section {
+            margin-top: 15px;
+        }
+        .output-label {
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 5px;
+        }
+        .output-content {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+            min-height: 30px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .version {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        #brailleOutput {
+            font-size: 150%;
+        }
+        .error {
+            color: #d9534f;
+            background-color: #f9e8e8;
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 4px solid #d9534f;
+        }
+    </style>
+</head>
+<body>
+    <h1>MathCAT Web Demo</h1>
+    <div class="version" id="version">Loading...</div>
+    
+    <div class="container">
+        <h2>Preferences</h2>
+        <div class="controls">
+            <div class="control-group">
+                <label for="language">Language:</label>
+                <select id="language">
+                    <option value="en">English (en)</option>
+                    <option value="es">Spanish (es)</option>
+                    <option value="fr">French (fr)</option>
+                    <option value="de">German (de)</option>
+                    <option value="vi">Vietnamese (vi)</option>
+                    <option value="id">Indonesian (id)</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="speechStyle">Speech Style:</label>
+                <select id="speechStyle">
+                    <option value="ClearSpeak">ClearSpeak</option>
+                    <option value="SimpleSpeak">SimpleSpeak</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="verbosity">Verbosity:</label>
+                <select id="verbosity">
+                    <option value="Verbose">Verbose</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Terse">Terse</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>MathML Input</h2>
+        <div class="control-group" style="margin-bottom: 15px;">
+            <label for="exampleSelect">Load Example:</label>
+            <select id="exampleSelect" onchange="loadSelectedExample()">
+                <option value="">-- Choose an example --</option>
+                <option value="0">Simple Fraction: x/y + 2</option>
+                <option value="1">Pythagorean Theorem: x² + y² = z²</option>
+                <option value="2">Quadratic Formula</option>
+                <option value="3">Integral: ∫xe^x dx</option>
+                <option value="4">Square Root: √(a + b)</option>
+                <option value="5">Matrix (2×2)</option>
+                <option value="6">Chemistry: Water (H₂O)</option>
+                <option value="7">Chemistry: Decomposition (2H₂O → 2H₂ + O₂)</option>
+            </select>
+        </div>
+        <div class="input-section">
+            <textarea id="mathmlInput" rows="6"><math><mrow><mfrac><mi>x</mi><mi>y</mi></mfrac><mo>+</mo><mn>2</mn></mrow></math></textarea>
+        </div>
+        <button onclick="processInput()">Process MathML</button>
+        <div class="output-section">
+            <div class="output-label">Rendered Math:</div>
+            <div class="output-content" id="renderedMath" style="font-size: 20px; text-align: center; padding: 20px;"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Output</h2>
+        <div class="output-section">
+            <div class="output-label">Spoken Text:</div>
+            <div class="output-content" id="spokenOutput"></div>
+        </div>
+        <div class="output-section">
+            <div class="output-label">Braille:</div>
+            <div class="output-content" id="brailleOutput"></div>
+        </div>
+        <div class="output-section" id="errorOutput" style="display:none;">
+            <div class="error" id="errorContent"></div>
+        </div>
+        <div class="output-section">
+            <div class="output-label">Canonical MathML:</div>
+            <div class="output-content" id="canonicalOutput"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import init, { MathCAT as mathCAT } from './pkg/mathcat_web.js'
+
+        let initialized = false;
+
+        async function initialize() {
+            if (initialized) return;
+            
+            await init();
+            mathCAT.setRulesDir('Rules');
+            initialized = true;
+            
+            document.getElementById('version').textContent = `MathCAT Version: ${mathCAT.getVersion()}`;
+            
+            // Set initial preferences
+            updatePreferences();
+            
+            // Add event listeners for preference changes
+            document.getElementById('language').addEventListener('change', updatePreferences);
+            document.getElementById('speechStyle').addEventListener('change', updatePreferences);
+            document.getElementById('verbosity').addEventListener('change', updatePreferences);
+        }
+
+        function updatePreferences() {
+            try {
+                const language = document.getElementById('language').value;
+                const speechStyle = document.getElementById('speechStyle').value;
+                const verbosity = document.getElementById('verbosity').value;
+                
+                mathCAT.setPreference('Language', language);
+                mathCAT.setPreference('SpeechStyle', speechStyle);
+                mathCAT.setPreference('Verbosity', verbosity);
+                
+                // Re-process if there's existing input
+                const input = document.getElementById('mathmlInput').value.trim();
+                if (input) {
+                    processInput();
+                }
+            } catch (error) {
+                console.error('Error updating preferences:', error);
+            }
+        }
+
+        window.processInput = async function() {
+            await initialize();
+            
+            const errorOutput = document.getElementById('errorOutput');
+            const errorContent = document.getElementById('errorContent');
+            errorOutput.style.display = 'none';
+            
+            try {
+                const mathmlInput = document.getElementById('mathmlInput').value.trim();
+                
+                // Set MathML and get canonical form
+                const canonical = mathCAT.setMathML(mathmlInput);
+                document.getElementById('canonicalOutput').textContent = canonical;
+                
+                // Render MathML using MathJax
+                const renderedMath = document.getElementById('renderedMath');
+                renderedMath.innerHTML = mathmlInput;
+                if (window.MathJax) {
+                    MathJax.typesetPromise([renderedMath]).catch((err) => console.error('MathJax error:', err));
+                }
+                
+                // Get spoken text
+                const spoken = mathCAT.getSpokenText();
+                document.getElementById('spokenOutput').textContent = spoken;
+                
+                // Get braille
+                const braille = mathCAT.getBraille('');
+                document.getElementById('brailleOutput').textContent = braille;
+                
+            } catch (error) {
+                errorContent.textContent = `Error: ${error}`;
+                errorOutput.style.display = 'block';
+                console.error('Error processing MathML:', error);
+            }
+        }
+
+        window.loadSelectedExample = function() {
+            const examples = [
+                '<math><mrow><mfrac><mi>x</mi><mi>y</mi></mfrac><mo>+</mo><mn>2</mn></mrow></math>',
+                '<math><mrow><msup><mi>x</mi><mn>2</mn></msup><mo>+</mo><msup><mi>y</mi><mn>2</mn></msup><mo>=</mo><msup><mi>z</mi><mn>2</mn></msup></mrow></math>',
+                '<math><mrow><mfrac><mrow><mo>−</mo><mi>b</mi><mo>±</mo><msqrt><mrow><msup><mi>b</mi><mn>2</mn></msup><mo>−</mo><mn>4</mn><mi>a</mi><mi>c</mi></mrow></msqrt></mrow><mrow><mn>2</mn><mi>a</mi></mrow></mfrac></mrow></math>',
+                '<math><mrow><mo>∫</mo><mi>x</mi><msup><mi>e</mi><mi>x</mi></msup><mo>d</mo><mi>x</mi></mrow></math>',
+                '<math><msqrt><mrow><mi>a</mi><mo>+</mo><mi>b</mi></mrow></msqrt></math>',
+                '<math><mrow><mo>(</mo><mtable><mtr><mtd><mn>1</mn></mtd><mtd><mn>2</mn></mtd></mtr><mtr><mtd><mn>3</mn></mtd><mtd><mn>4</mn></mtd></mtr></mtable><mo>)</mo></mrow></math>',
+                '<math><mrow intent=":chemical-formula"><mmultiscripts><mi mathvariant="normal" intent=":chemical-element">H</mi><mn>2</mn><mrow/></mmultiscripts><mi mathvariant="normal" intent=":chemical-element">O</mi></mrow></math>',
+                '<math><mrow intent=":chemical-equation"><mrow intent=":chemical-equation"><mn>2</mn><mo>&#x2062;</mo><mrow intent=":chemical-equation"><mmultiscripts intent=":chemical-formula"><mi mathvariant="normal" intent=":chemical-element">H</mi><mn>2</mn><mrow/></mmultiscripts><mo>&#x2063;</mo><mi mathvariant="normal" intent=":chemical-element">O</mi></mrow></mrow><mo>⟶</mo><mrow intent=":chemical-equation"><mrow intent=":chemical-equation"><mn>2</mn><mo>&#x2062;</mo><mmultiscripts intent=":chemical-formula"><mi mathvariant="normal" intent=":chemical-element">H</mi><mn>2</mn><mrow/></mmultiscripts></mrow><mo>+</mo><mmultiscripts intent=":chemical-formula"><mi mathvariant="normal" intent=":chemical-element">O</mi><mn>2</mn><mrow/></mmultiscripts></mrow></mrow></math>'
+            ];
+            
+            const select = document.getElementById('exampleSelect');
+            const index = parseInt(select.value);
+            
+            if (index >= 0 && index < examples.length) {
+                document.getElementById('mathmlInput').value = examples[index];
+                processInput();
+            }
+        }
+
+        // Initialize on page load
+        initialize();
+    </script>
+</body>
+</html>
