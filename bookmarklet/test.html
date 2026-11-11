@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Braille Math Input – TinyMCE 5 test page</title>
+  <style>body { font-family: system-ui, sans-serif; max-width: 56rem; margin: 2rem auto; padding: 0 1rem; }</style>
+</head>
+<body>
+  <h1>Braille Math Input – test page</h1>
+  <p>A TinyMCE 5 editor configured to keep MathML, like the Canvas RCE. Click in the editor, then press
+    <button type="button" id="open">Open braille math input</button> (same as running the bookmarklet).
+    Put the cursor just after the fraction or the equation image to edit it.</p>
+  <label for="ed">Editor</label>
+  <textarea id="ed"><p>Existing MathML: <math><mfrac><mn>1</mn><mn>2</mn></mfrac></math> and an equation image:
+    <img class="equation_image" title="x^2+1" src="/equation_images/x%255E2%252B1?scale=1" alt="LaTeX: x^2+1" data-equation-content="x^2+1"> end.</p>
+    <p>New math here: </p></textarea>
+  <h2>Editor HTML</h2>
+  <pre id="html" style="white-space:pre-wrap"></pre>
+
+  <script>
+    // Optional overrides for offline testing: ?tinymce=URL&mathjax=URL
+    const q = new URLSearchParams(location.search);
+    window.TEST_MATHJAX = q.get('mathjax') || undefined;
+    const s = document.createElement('script');
+    s.src = q.get('tinymce') || 'https://cdn.jsdelivr.net/npm/tinymce@5/tinymce.min.js';
+    s.onload = () => {
+      const mml = 'math mi mn mo ms mtext mspace mrow mfrac msqrt mroot msub msup msubsup munder mover munderover ' +
+        'mtable mtr mtd mstyle mpadded mphantom menclose semantics annotation annotation-xml mmultiscripts mprescripts none';
+      tinymce.init({
+        selector: '#ed', height: 260, menubar: false, plugins: [], toolbar: 'undo redo',
+        extended_valid_elements: mml.split(' ').map(t => t + '[*]').join(','),
+        custom_elements: mml.split(' ').filter(t => t !== 'math').map(t => '~' + t).join(','),
+        setup: ed => ed.on('init change undo redo SetContent', () => {
+          document.getElementById('html').textContent = ed.getContent();
+        }),
+      });
+    };
+    document.head.appendChild(s);
+  </script>
+  <script type="module">
+    import { run } from './braille-math.js';
+    document.getElementById('open').addEventListener('click', () =>
+      run(window.TEST_MATHJAX ? { mathjaxUrl: window.TEST_MATHJAX } : {}));
+    window.runBrailleMath = run;
+  </script>
+</body>
+</html>

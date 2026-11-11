@@ -141,3 +141,29 @@ mathCAT.translateBraille('⠹⠁⠌⠃⠼', 'Nemeth', 'UEB'); // "⠰⠰⠷⠁�
 Parse errors are thrown as strings. `input.html` is a test page for these functions. Serve the folder over HTTP (for example `python3 -m http.server`) and open `/input.html`.
 
 A native smoke test runs the same calls without a browser: `cargo test --release -- --nocapture`.
+
+## Braille Math Input bookmarklet (Canvas RCE / TinyMCE)
+
+`bookmarklet/braille-math.js` adds a dialog to any page with a TinyMCE editor (including the Canvas Rich Content Editor) for entering math in **UEB** or **Nemeth** braille:
+
+- **Three ways to type:** six-key chording (F D S J K L = dots 1–6, Space = blank cell), ASCII braille (`?1/2#`), or Unicode braille. Input from a screen reader or braille display gets through even when six-key entry is on.
+- **Live output:** a preview rendered by an isolated MathJax 2.7.7 using `TeX-MML-AM_SVG` (the same build and config Canvas uses), MathCAT speech, and the MathML. If you choose, the dialog announces the dots of each chord and reads the speech after a pause.
+- **Editing existing math:** if the cursor is inside or just after `<math>` or a Canvas equation image (`img.equation_image`), that math is converted to braille in the chosen code and loaded for editing, and **Replace** swaps it out. Equation images are read from their LaTeX and replaced with MathML.
+- **Switching codes** translates what's in the box between UEB and Nemeth.
+- **Enter** inserts or replaces, **Escape** cancels, and a single Undo in the editor reverts the change. Settings are stored in `localStorage` under `atac_iu_edu_braillemath_config`.
+
+### Install
+
+Make a bookmark whose URL is the line below, replacing `TAG` with a tag that contains `bookmarklet/` (for example `0.8.0-alpha.1-web.2`):
+
+```
+javascript:(()=>{import('https://cdn.jsdelivr.net/gh/brichwin/MathCATForWeb@TAG/bookmarklet/braille-math.js').then(m=>m.run()).catch(e=>alert('Braille math input could not load: '+e))})()
+```
+
+Click in the editor, then click the bookmark. The module loads `../pkg/` from the same tag, so the bookmarklet and the WebAssembly build always match.
+
+If a site's Content Security Policy blocks scripts from `cdn.jsdelivr.net`, the bookmarklet shows the "could not load" message. The preview iframe also needs `cdnjs.cloudflare.com`, which Canvas already uses for MathJax.
+
+### Testing locally
+
+`bookmarklet/test.html` is a TinyMCE 5 page configured to keep MathML. It includes an existing fraction and a Canvas-style equation image. Serve the repo (`python3 -m http.server`) and open `/bookmarklet/test.html`. The query parameters `?tinymce=URL&mathjax=URL` point it at local copies of TinyMCE and MathJax.
