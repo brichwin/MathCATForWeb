@@ -164,6 +164,21 @@ Click in the editor, then click the bookmark. The module loads `../pkg/` from th
 
 If a site's Content Security Policy blocks scripts from `cdn.jsdelivr.net`, the bookmarklet shows the "could not load" message. The preview iframe also needs `cdnjs.cloudflare.com`, which Canvas already uses for MathJax.
 
+### Keyboard shortcut
+
+After the bookmarklet has run once, **Alt+Shift+M** (**Option+Shift+M** on a Mac) reopens the dialog until you leave or reload the page. The dialog's description announces the shortcut. It works:
+
+- inside any TinyMCE editor, including editors created later (such as a discussion reply box) and editors in same-origin frames such as New Quizzes;
+- anywhere else on the page, in which case it uses the editor that was last active.
+
+The shortcut avoids keys used by Chrome and Edge (Alt+Shift+B, I, T and A), TinyMCE (Alt+Shift+digits), the Canvas RCE (Alt+F8, Alt+F9, Alt+F10, Ctrl+F9, Alt+0) and NVDA's global Ctrl+Alt+N. To use a different one, pass it to `run`:
+
+```
+javascript:(()=>{import('https://cdn.jsdelivr.net/gh/brichwin/MathCATForWeb@TAG/bookmarklet/braille-math.js').then(m=>m.run({shortcut:'Alt+Shift+K'})).catch(e=>alert('Braille math input could not load: '+e))})()
+```
+
+A bookmarklet can't run on its own when a page loads, so a reload or a full Canvas page change means running it once more. To have the shortcut on every Canvas page automatically, load the same module from a userscript manager such as Tampermonkey, using `m.install()` in place of `m.run()`.
+
 ### Testing locally
 
 `bookmarklet/test.html` is a TinyMCE 5 page configured to keep MathML. It includes an existing fraction and a Canvas-style equation image. Serve the repo (`python3 -m http.server`) and open `/bookmarklet/test.html`. The query parameters `?tinymce=URL&mathjax=URL` point it at local copies of TinyMCE and MathJax.

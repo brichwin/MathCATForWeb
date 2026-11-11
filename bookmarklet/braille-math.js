@@ -10,12 +10,16 @@
 
 import init, { MathCAT } from '../pkg/mathcat_web.js';
 
-export const VERSION = '0.1.0';
+export const VERSION = '0.4.0';
 
 const DEFAULTS = {
   // Same build and config the Canvas RCE uses for rendered math.
   mathjaxUrl: 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_SVG',
   wasmUrl: new URL('../pkg/mathcat_web_bg.wasm', import.meta.url).href,
+  // Reopens the dialog after the bookmarklet has run once on the page. Chosen to avoid
+  // Chrome/Edge (Alt+Shift+B/I/T/A), TinyMCE (Alt+Shift+digits), the Canvas RCE
+  // (Alt+F8/F9/F10, Ctrl+F9, Alt+0) and NVDA/JAWS. Option+Shift+M on a Mac.
+  shortcut: 'Alt+Shift+M',
 };
 
 const CODES = ['UEB', 'Nemeth'];
@@ -171,6 +175,96 @@ function existingMathToBraille(node, code) {
 }
 
 // ---------------------------------------------------------------------------
+// Keyboard shortcut that stays active for the life of the page
+
+const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+
+function parseShortcut(s) {
+  const parts = String(s).split('+').map(p => p.trim().toLowerCase()).filter(Boolean);
+  const key = parts.pop() || 'm';
+  const code = /^[a-z]$/.test(key) ? 'Key' + key.toUpperCase()
+    : /^\d$/.test(key) ? 'Digit' + key
+    : /^f\d{1,2}$/.test(key) ? key.toUpperCase()
+    : key;
+  const has = (...names) => names.some(n => parts.includes(n));
+  return {
+    code,
+    alt: has('alt', 'option', 'opt'), shift: has('shift'),
+    ctrl: has('ctrl', 'control'), meta: has('meta', 'cmd', 'command'),
+  };
+}
+
+function shortcutLabel(sc) {
+  const key = sc.code.replace(/^(Key|Digit)/, '');
+  return [sc.ctrl && 'Ctrl', sc.alt && (isMac ? 'Option' : 'Alt'), sc.shift && 'Shift',
+    sc.meta && (isMac ? 'Cmd' : 'Meta'), key].filter(Boolean).join('+');
+}
+
+// Uses e.code (physical key) so Option+Shift+M on a Mac matches even though it types "Â".
+const matchesShortcut = (e, sc) => e.code === sc.code && e.altKey === sc.alt &&
+  e.shiftKey === sc.shift && e.ctrlKey === sc.ctrl && e.metaKey === sc.meta;
+
+function sameOriginWindows(win, out = []) {
+  try { void win.document; out.push(win); } catch { return out; }   // cross-origin: skip
+  for (let i = 0; i < win.frames.length; i++) sameOriginWindows(win.frames[i], out);
+  return out;
+}
+
+let installed = null;
+
+/**
+ * Listen for the shortcut in this page, in every same-origin frame, and in every TinyMCE
+ * editor (including editors created later). Called by run(); safe to call repeatedly.
+ */
+export function install(options = {}) {
+  const opts = { ...DEFAULTS, ...options };
+  if (installed) {                       // later runs may change options (e.g. the shortcut)
+    installed.opts = opts;
+    installed.sc = parseShortcut(opts.shortcut);
+    return installed;
+  }
+  const state = { opts, sc: parseShortcut(opts.shortcut), lastFire: 0 };
+  const onKey = e => {
+    if (!matchesShortcut(e, state.sc)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    // The same keypress can reach both a frame's window listener and TinyMCE's handler.
+    const now = Date.now();
+    if (now - state.lastFire < 100) return;
+    state.lastFire = now;
+    run(state.opts);
+  };
+  const wins = new WeakSet(), tinys = new WeakSet(), eds = new WeakSet();
+  const hookEditor = ed => {
+    if (!ed || eds.has(ed)) return;
+    eds.add(ed);
+    ed.on('keydown', onKey);
+    ed.on('init', scan);               // pick up the editor's iframe window once it exists
+  };
+  function scan() {
+    for (const w of sameOriginWindows(window)) {
+      if (!wins.has(w)) { wins.add(w); w.addEventListener('keydown', onKey, true); }
+      let tm;
+      try { tm = w.tinymce; } catch { tm = null; }
+      if (tm && !tinys.has(tm)) {
+        tinys.add(tm);
+        if (typeof tm.on === 'function') tm.on('AddEditor', e => hookEditor(e.editor));
+      }
+      if (tm) {
+        try {
+          const list = typeof tm.get === 'function' ? tm.get() : tm.editors;
+          (Array.isArray(list) ? list : Object.values(list || {})).forEach(hookEditor);
+        } catch { /* ignore */ }
+      }
+    }
+  }
+  scan();
+  state.timer = setInterval(scan, 2000);  // new frames (e.g. New Quizzes) and late-loaded TinyMCE
+  installed = state;
+  return state;
+}
+
+// ---------------------------------------------------------------------------
 // Settings
 
 function loadConfig() {
@@ -260,9 +354,10 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 `;
 
 const HTML = `
-<dialog aria-labelledby="bm-title" aria-describedby="bm-sub">
+<dialog aria-labelledby="bm-title" aria-describedby="bm-sub bm-keys">
   <h2 id="bm-title">Braille math input</h2>
   <p class="sub" id="bm-sub"></p>
+  <p class="sub" id="bm-keys"></p>
   <fieldset>
     <legend>Braille code</legend>
     <label><input type="radio" name="bm-code" value="UEB"> UEB</label>
@@ -309,13 +404,14 @@ const describeCell = cell => {
  */
 export async function run(options = {}) {
   const opts = { ...DEFAULTS, ...options };
+  const keys = shortcutLabel(install(opts).sc);
 
   const existing = document.getElementById(HOST_ID);
   if (existing) { existing.shadowRoot.querySelector('#bm-input').focus(); return; }
 
   const ed = opts.editor || pickEditor();
   if (!ed) {
-    alert('Braille math input: no rich content editor found on this page. Click in the editor first, then run the bookmarklet.');
+    alert(`Braille math input: no rich content editor found on this page. Move to an editor, then press ${keys}.`);
     return;
   }
 
@@ -339,6 +435,7 @@ export async function run(options = {}) {
   const say = msg => { status.textContent = ''; setTimeout(() => { status.textContent = msg; }, 30); };
 
   $('#bm-sub').textContent = 'Loading MathCAT…';
+  $('#bm-keys').textContent = `Press ${keys} in the editor to reopen this dialog while you are on this page.`;
   root.querySelectorAll('input[name=bm-code]').forEach(r => { r.checked = r.value === cfg.code; });
   $('#bm-chord').checked = cfg.chord;
   $('#bm-echo').checked = cfg.echo;
