@@ -13,6 +13,11 @@ rustc 1.92.0 (ded5c06cf 2025-12-08)
 ## To build this project:
 
 - In a folder, download or git clone MathCAT
+  - **The math input functions (below) need MathCAT's `braille-parser` branch** (0.8.0-alpha.x), which is not yet merged into `main`:
+    ```sh
+    git clone -b braille-parser https://github.com/daisy/MathCAT
+    ```
+    (With an existing clone: `git fetch && git checkout braille-parser && git pull`.)
 - In the same folder, download or git clone MathCATForWeb
 - Your folder structure should look like this:
   ```
@@ -111,3 +116,28 @@ Which should produce something similar to the following console output:
 [Log] Spoken Text: – "x over y plus 2" (index.html, line 30)
 [Log] Braille: – "⠹⠭⠌⠽⠼⠬⠆" (index.html, line 33)
 ```
+
+## Math input: braille, ASCIIMath and LaTeX → MathML (MathCAT 0.8.0-alpha)
+
+Built against MathCAT's `braille-parser` branch, `MathCAT` also has these functions:
+
+| Function | What it does |
+|---|---|
+| `getBrailleInputCodes()` | Input codes the parser accepts: `UEB`, `Nemeth`, `ASCIIMath`, `LaTeX` |
+| `brailleToMathML(input, code)` | Returns plain `<math>…</math>` (no MathCAT ids). Does **not** change the current expression. Use this for pasting into an editor. |
+| `setMathMLFromBraille(input, code)` | Parses the input and makes it the current expression (like `setMathML`). Returns the canonical MathML with ids. Then call `getSpokenText()` / `getBraille('')`. |
+| `translateBraille(input, fromCode, toCode)` | Back-translates and re-brailles, e.g. Nemeth → UEB. Restores the `BrailleCode` preference afterwards. |
+| `normalizeBrailleInput(input, code)` | The input cleanup the other three apply automatically (taken from the MathCAT demo): for UEB/Nemeth, North American ASCII braille (`?A/B#`) becomes Unicode braille; for ASCIIMath/LaTeX, computer-braille cells become text; spaces between braille cells become U+2800. |
+| `getSupportedBrailleCodes()`, `getSupportedLanguages()` | Codes and languages available in the bundled rules. |
+
+```js
+mathCAT.setRulesDir('Rules');
+mathCAT.brailleToMathML('⠹⠁⠌⠃⠼', 'Nemeth');      // "<math><mfrac><mi>a</mi><mi>b</mi></mfrac></math>"
+mathCAT.setMathMLFromBraille('?A/B#', 'Nemeth');  // ASCII braille works too
+mathCAT.getSpokenText();                          // "eigh over b"
+mathCAT.translateBraille('⠹⠁⠌⠃⠼', 'Nemeth', 'UEB'); // "⠰⠰⠷⠁⠨⠌⠃⠾"
+```
+
+Parse errors are thrown as strings. `input.html` is a test page for these functions. Serve the folder over HTTP (for example `python3 -m http.server`) and open `/input.html`.
+
+A native smoke test runs the same calls without a browser: `cargo test --release -- --nocapture`.

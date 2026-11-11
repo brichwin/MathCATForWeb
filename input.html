@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MathCAT Web – Braille/Text Input Test</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 52rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; }
+    label { font-weight: 600; display: block; margin-top: 1rem; }
+    textarea, select { font-size: 1.25rem; }
+    textarea { width: 100%; }
+    output, pre { display: block; background: #f4f4f4; padding: .5rem; white-space: pre-wrap; word-break: break-all; min-height: 1.5em; }
+    .braille { font-size: 1.6rem; }
+    [role=alert] { color: #a00; }
+  </style>
+</head>
+<body>
+  <h1>MathCAT input test</h1>
+  <p id="version">Loading MathCAT…</p>
+
+  <label for="code">Input code</label>
+  <select id="code"></select>
+
+  <label for="input">Math input (Unicode braille, ASCII braille, ASCIIMath or LaTeX)</label>
+  <textarea id="input" rows="3" class="braille" spellcheck="false" autocomplete="off">⠹⠁⠌⠃⠼</textarea>
+
+  <label for="target">Translate to braille code</label>
+  <select id="target"></select>
+
+  <div id="error" role="alert"></div>
+
+  <h2>MathML (for pasting)</h2>
+  <pre id="mathml"></pre>
+  <h2>Rendered</h2>
+  <output id="rendered"></output>
+  <h2>Speech</h2>
+  <output id="speech" aria-live="polite"></output>
+  <h2>Braille in target code</h2>
+  <output id="braille" class="braille"></output>
+
+  <script type="module">
+    import init, { MathCAT as mathCAT } from './pkg/mathcat_web.js';
+
+    await init();
+    mathCAT.setRulesDir('Rules');
+    document.getElementById('version').textContent = `MathCAT Version: ${mathCAT.getVersion()}`;
+
+    const $ = id => document.getElementById(id);
+    const fill = (sel, items, value) => {
+      sel.innerHTML = items.map(c => `<option${c === value ? ' selected' : ''}>${c}</option>`).join('');
+    };
+    fill($('code'), mathCAT.getBrailleInputCodes(), 'Nemeth');
+    fill($('target'), mathCAT.getSupportedBrailleCodes(), 'UEB');
+
+    function update() {
+      const input = $('input').value;
+      const code = $('code').value;
+      $('error').textContent = '';
+      if (!input.trim()) { ['mathml', 'rendered', 'speech', 'braille'].forEach(id => $(id).textContent = ''); return; }
+      try {
+        const mathml = mathCAT.brailleToMathML(input, code);
+        $('mathml').textContent = mathml;
+        $('rendered').innerHTML = mathml;
+        mathCAT.setMathMLFromBraille(input, code);
+        $('speech').textContent = mathCAT.getSpokenText();
+        $('braille').textContent = mathCAT.translateBraille(input, code, $('target').value);
+      } catch (e) {
+        $('error').textContent = String(e);
+      }
+    }
+    ['input', 'code', 'target'].forEach(id => $(id).addEventListener(id === 'input' ? 'input' : 'change', update));
+    update();
+  </script>
+</body>
+</html>
