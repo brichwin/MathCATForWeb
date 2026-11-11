@@ -506,11 +506,28 @@ export async function run(options = {}) {
     const before = body.querySelectorAll('math').length;
     try {
       ed.focus();
-      ed.undoManager.transact(() => {
-        if (replaceNode && replaceNode.isConnected) ed.selection.select(replaceNode);
-        else if (savedRng) ed.selection.setRng(savedRng);
-        ed.insertContent(mathml);
-      });
+      if (replaceNode && replaceNode.isConnected) {
+        // Swap the element directly. Selecting <math> and calling insertContent is unreliable:
+        // TinyMCE can collapse the selection into the math's first text node (e.g. inside <mn>),
+        // which nests the new math inside the old one.
+        const doc = replaceNode.ownerDocument;
+        const holder = doc.createElement('div');
+        holder.innerHTML = mathml;       // HTML parser puts <math> in the MathML namespace
+        const newNode = holder.firstElementChild;
+        ed.undoManager.transact(() => { replaceNode.replaceWith(newNode); });
+        const r = doc.createRange();
+        r.setStartAfter(newNode);
+        r.collapse(true);
+        ed.selection.setRng(r);
+        ed.setDirty(true);
+        ed.nodeChanged();
+        ed.fire('change');
+      } else {
+        ed.undoManager.transact(() => {
+          if (savedRng) ed.selection.setRng(savedRng);
+          ed.insertContent(mathml);
+        });
+      }
     } catch (e) {
       err.textContent = 'Could not insert into the editor: ' + e;
       return;
