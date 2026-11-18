@@ -1,0 +1,29 @@
+:root { color-scheme: light dark; }
+body { margin: 0; font: 14px/1.45 "Segoe UI", system-ui, -apple-system, sans-serif; color: CanvasText; background: Canvas; }
+.bm { padding: 0.75rem 1rem 1.5rem; }
+h1 { font-size: 1.15rem; margin: 0 0 0.25rem; }
+.status { margin: 0 0 0.75rem; color: color-mix(in srgb, CanvasText 72%, Canvas); }
+fieldset.codes { border: 0; padding: 0; margin: 0 0 0.5rem; display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+fieldset.codes legend { float: left; font-weight: 600; margin-right: 0.5rem; padding: 0; }
+.field-label { display: block; font-weight: 600; margin: 0.25rem 0; }
+textarea { box-sizing: border-box; width: 100%; font-size: 1.6rem; line-height: 1.3; padding: 0.3rem 0.4rem;
+  border: 2px solid #666; border-radius: 4px; resize: vertical; background: Field; color: FieldText;
+  font-family: "Segoe UI Symbol", "Apple Braille", system-ui, sans-serif; }
+textarea:focus, button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px solid #990000; outline-offset: 2px; }
+.hint { font-size: 0.85rem; color: color-mix(in srgb, CanvasText 72%, Canvas); margin: 0.25rem 0 0.5rem; }
+.buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.5rem 0; }
+button { font: inherit; padding: 0.35rem 0.8rem; border-radius: 4px; border: 1px solid #666; background: ButtonFace; color: ButtonText; cursor: pointer; }
+button.primary { background: #990000; border-color: #990000; color: #fff; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.err { color: #b00020; font-weight: 600; min-height: 1.2em; margin: 0.25rem 0; }
+.note { font-size: 0.85rem; margin: 0.25rem 0; }
+.out-label { font-size: 0.9rem; font-weight: 600; margin: 0.75rem 0 0.2rem; }
+.speech { background: color-mix(in srgb, CanvasText 6%, Canvas); padding: 0.3rem 0.5rem; border-radius: 4px; min-height: 1.4em; margin: 0; }
+.preview { border: 1px solid #bbb; border-radius: 4px; padding: 0.4rem; min-height: 2.5em; font-size: 1.4rem; overflow-x: auto; }
+.echo { font-size: 1.3rem; min-height: 1.3em; word-break: break-all; margin: 0; }
+details { margin-top: 0.75rem; }
+details label { display: block; margin: 0.3rem 0; }
+pre { white-space: pre-wrap; word-break: break-all; font-size: 0.75rem; background: color-mix(in srgb, CanvasText 6%, Canvas); padding: 0.4rem; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.foot { font-size: 0.75rem; color: color-mix(in srgb, CanvasText 72%, Canvas); margin-top: 1rem; }
+@media (forced-colors: active) { button.primary { forced-color-adjust: auto; } }

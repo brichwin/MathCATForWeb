@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MathML ⇄ OMML converter tests</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 1.5rem; }
+    table { border-collapse: collapse; width: 100%; font-size: .85rem; }
+    th, td { border: 1px solid #ccc; padding: .3rem .4rem; vertical-align: top; text-align: left; }
+    .pass { background: #e8f5e9; } .fail { background: #ffebee; }
+    .braille { font-size: 1.1rem; }
+    code { word-break: break-all; }
+  </style>
+</head>
+<body>
+  <h1>MathML ⇄ OMML converter tests</h1>
+  <p id="summary" role="status">Running…</p>
+  <h2>Round trip: MathCAT MathML → OMML → MathML</h2>
+  <p>Passes when MathCAT gives the same Nemeth braille, UEB braille and speech for the original and the round-tripped MathML.</p>
+  <table id="roundtrip"><thead><tr><th>Input</th><th>Speech</th><th>Nemeth</th><th>Result</th></tr></thead><tbody></tbody></table>
+  <h2>Word-style OMML → MathML</h2>
+  <p>Passes when the speech of the converted MathML matches the expected speech.</p>
+  <table id="word"><thead><tr><th>Equation</th><th>Expected speech</th><th>Speech</th><th>Result</th></tr></thead><tbody></tbody></table>
+
+  <script type="module">
+    import init, { MathCAT } from '../../pkg/mathcat_web.js';
+    import { mathmlToOmml } from '../mathml2omml.js';
+    import { ommlToMathml } from '../omml2mathml.js';
+    import { ROUND_TRIP, WORD_SAMPLES, wrapOmml } from './corpus.js';
+
+    await init();
+    MathCAT.setRulesDir('Rules');
+    MathCAT.setPreference('SpeechStyle', 'ClearSpeak');
+
+    const brailleOf = (mml, code) => { MathCAT.setPreference('BrailleCode', code); MathCAT.setMathML(mml); return MathCAT.getBraille(''); };
+    const speechOf = mml => { MathCAT.setMathML(mml); return MathCAT.getSpokenText(); };
+    const td = (html, cls) => `<td${cls ? ` class="${cls}"` : ''}>${html}</td>`;
+    const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+    const results = { roundTrip: [], word: [] };
+
+    for (const [code, input] of ROUND_TRIP) {
+      const r = { code, input };
+      try {
+        const mml1 = MathCAT.brailleToMathML(input, code);
+        const { omml, warnings } = mathmlToOmml(mml1);
+        const back = ommlToMathml(omml);
+        const mml2 = back.mathml;
+        Object.assign(r, { mml1, omml, mml2, warnings: warnings.concat(back.warnings) });
+        r.n1 = brailleOf(mml1, 'Nemeth'); r.n2 = brailleOf(mml2, 'Nemeth');
+        r.u1 = brailleOf(mml1, 'UEB'); r.u2 = brailleOf(mml2, 'UEB');
+        r.s1 = speechOf(mml1); r.s2 = speechOf(mml2);
+        r.pass = r.n1 === r.n2 && r.u1 === r.u2 && r.s1 === r.s2;
+      } catch (e) { r.error = String(e); r.pass = false; }
+      results.roundTrip.push(r);
+      document.querySelector('#roundtrip tbody').insertAdjacentHTML('beforeend', `<tr class="${r.pass ? 'pass' : 'fail'}">` +
+        td(`<code>${esc(code)}: ${esc(input)}</code>`) + td(esc(r.s1 || '')) +
+        td(`<span class="braille">${esc(r.n1 || '')}</span>`) +
+        td(r.pass ? 'pass' : `FAIL ${esc(r.error || '')}<br>speech: ${esc(r.s2 || '')}<br>nemeth: ${esc(r.n2 || '')}<br>ueb: ${esc(r.u1 || '')} → ${esc(r.u2 || '')}`) + '</tr>');
+    }
+
+    for (const [label, omml, expected] of WORD_SAMPLES) {
+      const r = { label, expected };
+      try {
+        const { mathml, warnings } = ommlToMathml(wrapOmml(omml));
+        Object.assign(r, { mathml, warnings, speech: speechOf(mathml), nemeth: brailleOf(mathml, 'Nemeth') });
+        r.pass = r.speech === expected;
+        // Converting back to OMML and to MathML again must give the same speech.
+        const again = ommlToMathml(mathmlToOmml(mathml).omml).mathml;
+        r.speech2 = speechOf(again);
+        r.pass = r.pass && r.speech2 === r.speech;
+      } catch (e) { r.error = String(e); r.pass = false; }
+      results.word.push(r);
+      document.querySelector('#word tbody').insertAdjacentHTML('beforeend', `<tr class="${r.pass ? 'pass' : 'fail'}">` +
+        td(esc(label)) + td(esc(expected)) + td(esc(r.speech || '') + `<br><span class="braille">${esc(r.nemeth || '')}</span>`) +
+        td(r.pass ? 'pass' : `FAIL ${esc(r.error || '')}<br>after re-conversion: ${esc(r.speech2 || '')}<br><code>${esc(r.mathml || '')}</code>`) + '</tr>');
+    }
+
+    const all = [...results.roundTrip, ...results.word];
+    const passed = all.filter(r => r.pass).length;
+    document.getElementById('summary').textContent = `${passed} of ${all.length} passed.`;
+    window.TEST_RESULTS = results;
+  </script>
+</body>
+</html>

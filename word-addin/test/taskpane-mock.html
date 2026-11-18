@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Braille Math Input for Word — simulated Word test page</title>
+  <link rel="stylesheet" href="../taskpane.css">
+  <style>
+    body { display: grid; grid-template-columns: 1fr 360px; gap: 1rem; }
+    #doc { padding: 1rem; font-family: Georgia, serif; }
+    #doc .p { border: 1px dashed #ccc; padding: .5rem; margin: .5rem 0; white-space: pre-wrap; font-family: monospace; font-size: .75rem; }
+    #app { border-left: 1px solid #ccc; }
+  </style>
+</head>
+<body>
+  <section id="doc" aria-label="Simulated document">
+    <h1>Simulated Word document</h1>
+    <p>This page stands in for Word so the task pane's real Word code (Word.run, getOoxml, insertOoxml) can be tested in a browser. It models a document as paragraphs of OOXML, with a cursor or a selected equation.</p>
+    <div id="paras"></div>
+  </section>
+  <div id="app"></div>
+
+  <script type="module">
+    import { start } from '../taskpane.js';
+    import { packageForOmml } from '../ooxml.js';
+
+    const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+    const M = 'http://schemas.openxmlformats.org/officeDocument/2006/math';
+    const PKG = 'http://schemas.microsoft.com/office/2006/xmlPackage';
+
+    // ---- document model: a list of <w:p> elements, plus a cursor or a selected node
+    const store = new DOMParser().parseFromString(`<w:body xmlns:w="${W}" xmlns:m="${M}"/>`, 'application/xml');
+    const doc = { paras: [], cursor: { p: 0, after: -1 }, selected: null, log: [] };
+    const ser = n => new XMLSerializer().serializeToString(n);
+
+    function setDocument(paragraphXml) {
+      doc.paras = paragraphXml.map(x => store.importNode(new DOMParser().parseFromString(
+        `<w:p xmlns:w="${W}" xmlns:m="${M}">${x}</w:p>`, 'application/xml').documentElement, true));
+      doc.cursor = { p: 0, after: -1 }; doc.selected = null; doc.log = [];
+      render();
+    }
+    function render() {
+      document.getElementById('paras').innerHTML = doc.paras.map((p, i) =>
+        `<div class="p">¶${i}: ${ser(p).replace(/&/g, '&amp;').replace(/</g, '&lt;')}</div>`).join('');
+    }
+    const pkg = inner => `<pkg:package xmlns:pkg="${PKG}"><pkg:part pkg:name="/word/document.xml"><pkg:xmlData>` +
+      `<w:document xmlns:w="${W}" xmlns:m="${M}"><w:body><w:p>${inner}</w:p><w:sectPr/></w:body></w:document></pkg:xmlData></pkg:part></pkg:package>`;
+    const pkgParagraphChildren = xml => {
+      const d = new DOMParser().parseFromString(xml, 'application/xml');
+      const p = d.getElementsByTagNameNS(W, 'p')[0];
+      return Array.from(p.childNodes);
+    };
+
+    // ---- Word API subset
+    class Range {
+      constructor(kind, p, extra = {}) { Object.assign(this, { kind, p }, extra); }
+      getOoxml() {
+        const result = { value: null };
+        pending.push(() => {
+          const para = doc.paras[this.p];
+          if (this.kind === 'selection-node') result.value = pkg(ser(this.node));
+          else if (this.kind === 'content') result.value = pkg(Array.from(para.childNodes).map(ser).join(''));
+          else result.value = pkg('');
+        });
+        return result;
+      }
+      getRange(loc) {
+        if (loc === 'End') {
+          if (this.kind === 'selection-node') {
+            const idx = Array.from(doc.paras[this.p].childNodes).indexOf(this.node);
+            return new Range('point', this.p, { after: idx });
+          }
+          if (this.kind === 'content') return new Range('point', this.p, { after: doc.paras[this.p].childNodes.length - 1 });
+          return new Range('point', this.p, { after: this.after });
+        }
+        throw new Error('getRange(' + loc + ') not simulated');
+      }
+      get paragraphs() {
+        const p = this.p;
+        return { getFirst: () => ({ getRange: loc => { if (loc !== 'Content') throw new Error('loc'); return new Range('content', p); } }) };
+      }
+      insertOoxml(xml, where) {
+        pending.push(() => {
+          if (where !== 'Replace') throw new Error('only Replace is simulated');
+          doc.log.push({ kind: this.kind, xml });
+          const para = doc.paras[this.p];
+          const nodes = pkgParagraphChildren(xml).map(n => store.importNode(n, true));
+          if (this.kind === 'point') {
+            const ref = para.childNodes[this.after + 1] || null;
+            for (const n of nodes) para.insertBefore(n, ref);
+          } else if (this.kind === 'selection-node') {
+            for (const n of nodes) para.insertBefore(n, this.node);
+            para.removeChild(this.node);
+          } else if (this.kind === 'content') {
+            while (para.firstChild) para.removeChild(para.firstChild);
+            for (const n of nodes) para.appendChild(n);
+          }
+          render();
+        });
+      }
+    }
+    let pending = [];
+    window.Word = {
+      run: async fn => {
+        const context = {
+          document: {
+            getSelection: () => doc.selected
+              ? new Range('selection-node', doc.selected.p, { node: doc.selected.node })
+              : new Range('cursor', doc.cursor.p, { after: doc.cursor.after }),
+          },
+          sync: async () => { const q = pending; pending = []; for (const f of q) f(); },
+        };
+        return fn(context);
+      },
+    };
+
+    // ---- test helpers for the automated run
+    window.mock = {
+      setDocument, doc,
+      cursorAt(p, after) { doc.cursor = { p, after }; doc.selected = null; },
+      selectEquation(p, n) {
+        const eqs = Array.from(doc.paras[p].childNodes).filter(c => c.namespaceURI === M);
+        doc.selected = { p, node: eqs[n] };
+      },
+      paragraph: i => ser(doc.paras[i]),
+      equations: i => Array.from(doc.paras[i].getElementsByTagNameNS(M, 'oMath')).length,
+    };
+
+    mock.setDocument(['<w:r><w:t>New math here:</w:t></w:r>']);
+    window.TASKPANE = await start(document.getElementById('app'), { watchSelection: false });
+    window.READY = true;
+  </script>
+</body>
+</html>

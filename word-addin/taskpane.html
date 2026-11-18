@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Braille Math Input</title>
+  <!-- Office.js must come from Microsoft's CDN. It is the add-in's only outside code. -->
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <link rel="stylesheet" href="taskpane.css">
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module">
+    import { start } from './taskpane.js';
+    Office.onReady(info => {
+      if (info.host !== Office.HostType.Word) {
+        document.getElementById('app').textContent = 'Braille Math Input works in Microsoft Word.';
+        return;
+      }
+      start(document.getElementById('app'));
+    });
+  </script>
+</body>
+</html>

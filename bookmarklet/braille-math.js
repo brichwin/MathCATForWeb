@@ -10,7 +10,7 @@
 
 import init, { MathCAT } from '../pkg/mathcat_web.js';
 
-export const VERSION = '0.4.0';
+export const VERSION = '0.5.0';
 
 const DEFAULTS = {
   // Same build and config the Canvas RCE uses for rendered math.
@@ -164,14 +164,38 @@ function cleanMathML(mathEl) {
   return clone.outerHTML;
 }
 
-/** Braille for an existing math node, in `code`. Throws if MathCAT can't read it. */
-function existingMathToBraille(node, code) {
-  if (node.localName === 'math') return mathmlToBraille(cleanMathML(node), code);
+/** MathML for an existing math node (a <math> element or a Canvas equation image). */
+function existingMathToMathML(node) {
+  if (node.localName === 'math') return cleanMathML(node);
   const mml = node.getAttribute('data-mathml');
-  if (mml) return mathmlToBraille(mml, code);
+  if (mml) return mml;
   const latex = equationImageLatex(node);
   if (!latex) throw new Error('This equation image has no LaTeX to read.');
-  return MathCAT.translateBraille(latex, 'LaTeX', code);
+  return MathCAT.brailleToMathML(latex, 'LaTeX');
+}
+
+const speechOf = mathml => { MathCAT.setMathML(mathml); return MathCAT.getSpokenText(); };
+
+/**
+ * MathCAT's braille reader is an early release, and some braille it writes is read back as
+ * different math (for example Nemeth "ac" as the unit acres). Returns a warning if `brailleText`
+ * doesn't read back as the same math as `mathml`, or null.
+ */
+function roundTripWarning(mathml, brailleText, code) {
+  try {
+    const original = speechOf(mathml);
+    const readBack = speechOf(MathCAT.brailleToMathML(brailleText, code));
+    if (original === readBack) return null;
+    return `Check before replacing: in ${code}, MathCAT reads this braille as “${readBack}”, but the math on the page reads as “${original}”.`;
+  } catch (e) {
+    return `Check before replacing: MathCAT could not read this ${code} braille back (${e}).`;
+  }
+}
+
+/** Set or remove display="block" on a <math> start tag. */
+function withDisplay(mathml, block) {
+  const plain = mathml.replace(/^(<math\b[^>]*?)\s+display\s*=\s*("[^"]*"|'[^']*')/, '$1');
+  return block ? plain.replace(/^<math\b/, '<math display="block"') : plain;
 }
 
 // ---------------------------------------------------------------------------
@@ -481,10 +505,14 @@ export async function run(options = {}) {
 
   // ---- existing math -> braille
   let replaceNode = null;
+  let loaded = null;            // { mathml, text, block } for math loaded from the page
   if (target) {
     try {
-      input.value = existingMathToBraille(target, cfg.code);
+      const original = existingMathToMathML(target);
+      input.value = mathmlToBraille(original, cfg.code);
       replaceNode = target;
+      loaded = { mathml: original, text: input.value,
+        block: target.localName === 'math' && target.getAttribute('display') === 'block' };
       $('#bm-sub').textContent = target.localName === 'img'
         ? 'Editing the equation image next to the cursor. It will be replaced with MathML.'
         : 'Editing the math next to the cursor.';
@@ -536,16 +564,29 @@ export async function run(options = {}) {
   input.addEventListener('input', update);
   update();
 
+  const untouched = () => !!loaded && input.value === loaded.text;
+  const checkLoaded = () => {
+    if (!untouched()) return;
+    const w = roundTripWarning(loaded.mathml, input.value, code());
+    if (w) err.textContent = w;
+  };
+  checkLoaded();
+
   // ---- code switch: carry the expression over to the new code
   let lastCode = code();
   root.querySelectorAll('input[name=bm-code]').forEach(r => r.addEventListener('change', () => {
     const c = code();
-    if (input.value.trim() && currentMathML) {
+    if (untouched()) {
+      // Unedited math from the page: braille it again from the original.
+      input.value = mathmlToBraille(loaded.mathml, c);
+      loaded.text = input.value;
+    } else if (input.value.trim() && currentMathML) {
       try { input.value = MathCAT.translateBraille(input.value, lastCode, c); } catch { /* keep text */ }
     }
     lastCode = c;
     cfg.code = c; saveConfig(cfg);
     update();
+    checkLoaded();
     say(`${c}`);
   }));
 
@@ -597,8 +638,15 @@ export async function run(options = {}) {
   // ---- insert / replace
   insertBtn.addEventListener('click', () => {
     if (!currentMathML) return;
+    const block = $('#bm-block').checked;
     let mathml = currentMathML;
-    if ($('#bm-block').checked) mathml = mathml.replace(/^<math\b/, '<math display="block"');
+    if (untouched()) {
+      // The braille wasn't edited: keep the original math exactly, rather than MathCAT's
+      // reading of the braille. A <math> with nothing changed is left alone.
+      if (replaceNode.localName === 'math' && block === loaded.block) { close(); return; }
+      mathml = loaded.mathml;
+    }
+    mathml = withDisplay(mathml, block);
     const body = ed.getBody();
     const before = body.querySelectorAll('math').length;
     try {

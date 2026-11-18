@@ -1,299 +1,454 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MathCAT Web Demo</title>
-    <script src="https://cdn.jsdelivr.net/npm/mathjax@4.0.0-beta.7/tex-mml-chtml.js"></script>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        h1 {
-            color: #333;
-            text-align: center;
-            margin-bottom: 0;
-        }
-        .container {
-            background-color: white;
-            border-radius: 8px;
-            padding: 10px 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .container h2 {
-            margin-top: 3px;
-        }
-        .controls {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        .control-group {
-            display: flex;
-            flex-direction: column;
-        }
-        label {
-            font-weight: bold;
-            margin-bottom: 5px;
-            color: #555;
-        }
-        select {
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        .input-section {
-            margin-bottom: 5px;
-        }
-        textarea {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            resize: vertical;
-            box-sizing: border-box;
-        }
-        button {
-            background-color: #007bff;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            font-size: 16px;
-            cursor: pointer;
-            margin-right: 10px;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        .output-section {
-            margin-top: 15px;
-        }
-        .output-label {
-            font-weight: bold;
-            color: #555;
-            margin-bottom: 5px;
-        }
-        .output-content {
-            background-color: #f8f9fa;
-            padding: 10px;
-            border-radius: 4px;
-            border-left: 4px solid #007bff;
-            min-height: 30px;
-            font-family: 'Courier New', monospace;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-        .version {
-            text-align: center;
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 20px;
-        }
-        #brailleOutput {
-            font-size: 150%;
-        }
-        .error {
-            color: #d9534f;
-            background-color: #f9e8e8;
-            padding: 10px;
-            border-radius: 4px;
-            border-left: 4px solid #d9534f;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Braille Math Input for the Canvas RCE</title>
+  <link rel="stylesheet" href="https://unpkg.com/rivet-core@2.9.0/css/rivet.min.css">
+  <style>
+    .bookmarklet-link {
+      display: inline-block;
+      padding: 10px 30px;
+      font-size: 1.5em;
+      font-weight: 600;
+    }
+
+    .bookmarklet-link:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(3, 116, 181, 0.4);
+    }
+
+    .bookmarklet-link:focus {
+      outline: 3px solid #ffc107;
+      outline-offset: 3px;
+    }
+
+    .callout {
+      border-left: 4px solid #990000;
+      background: #fff7f7;
+      padding: 1rem;
+      border-radius: 0.25rem;
+    }
+
+    code.long-snippet {
+      display: block;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      background: #f8f8f8;
+      padding: 1rem;
+      border-radius: 0.375rem;
+      border: 1px solid #d8d8d8;
+    }
+
+    .braille {
+      font-family: "Apple Braille", "Segoe UI Symbol", "DejaVu Sans", sans-serif;
+      font-size: 1.4em;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+
+    .key {
+      display: inline-block;
+      min-width: 1.6em;
+      padding: 0 0.35em;
+      border: 1px solid #a8a8a8;
+      border-bottom-width: 2px;
+      border-radius: 0.25rem;
+      background: #fafafa;
+      font-family: inherit;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .six-key {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 14rem));
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+
+    .six-key__hand {
+      border: 1px solid #d8d8d8;
+      border-radius: 0.5rem;
+      padding: 0.75rem 1rem;
+      background: #fff;
+    }
+
+    .six-key__hand-title {
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .six-key__keys {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .six-key__key {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border: 1px solid #a8a8a8;
+      border-bottom-width: 3px;
+      border-radius: 0.375rem;
+      padding: 0.35rem 0.6rem;
+      min-width: 3rem;
+      background: #fafafa;
+    }
+
+    .six-key__letter {
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+
+    .six-key__dot {
+      font-size: 0.875rem;
+      color: #5a5a5a;
+    }
+
+    table.examples td, table.examples th {
+      vertical-align: top;
+    }
+
+    .copy-row {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 0.75rem;
+    }
+
+    @media (max-width: 600px) {
+      .six-key {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
-<body>
-    <h1>MathCAT Web Demo</h1>
-    <div class="version" id="version">Loading...</div>
-    
-    <div class="container">
-        <h2>Preferences</h2>
-        <div class="controls">
-            <div class="control-group">
-                <label for="language">Language:</label>
-                <select id="language">
-                    <option value="en">English (en)</option>
-                    <option value="es">Spanish (es)</option>
-                    <option value="fr">French (fr)</option>
-                    <option value="de">German (de)</option>
-                    <option value="vi">Vietnamese (vi)</option>
-                    <option value="id">Indonesian (id)</option>
-                </select>
-            </div>
-            <div class="control-group">
-                <label for="speechStyle">Speech Style:</label>
-                <select id="speechStyle">
-                    <option value="ClearSpeak">ClearSpeak</option>
-                    <option value="SimpleSpeak">SimpleSpeak</option>
-                </select>
-            </div>
-            <div class="control-group">
-                <label for="verbosity">Verbosity:</label>
-                <select id="verbosity">
-                    <option value="Verbose">Verbose</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Terse">Terse</option>
-                </select>
-            </div>
+<body class="rvt-layout">
+  <header class="rvt-header-wrapper">
+    <a class="rvt-header-wrapper__skip-link" href="#main-content">Skip to main content</a>
+    <div class="rvt-header-global">
+      <div class="rvt-container-xl">
+        <div class="rvt-header-global__inner">
+          <div class="rvt-header-global__logo-slot">
+            <a class="rvt-lockup" href="https://brichwin.pages.iu.edu" aria-label="brichwin.pages.iu.edu home">
+              <div class="rvt-lockup__tab">
+                <svg xmlns="http://www.w3.org/2000/svg" class="rvt-lockup__trident" viewBox="0 0 28 34" aria-hidden="true">
+                  <path fill="currentColor" d="M-3.34344e-05 4.70897H8.83308V7.174H7.1897V21.1426H10.6134V2.72321H8.83308V0.121224H18.214V2.65476H16.2283V21.1426H19.7889V7.174H18.214V4.64047H27.0471V7.174H25.0614V23.6761L21.7746 26.8944H16.2967V30.455H18.214V33.8787H8.76463V30.592H10.6819V26.8259H5.20403L1.91726 23.6077V7.174H-3.34344e-05V4.70897Z"></path>
+                </svg>
+              </div>
+              <div class="rvt-lockup__body">
+                <span class="rvt-lockup__title">brichwin.pages.iu.edu</span>
+              </div>
+            </a>
+          </div>
         </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main-content" class="rvt-flex rvt-flex-column rvt-grow-1">
+    <div class="rvt-bg-black-000 rvt-border-bottom">
+      <div class="rvt-container-xl rvt-prose rvt-flow rvt-p-top-lg rvt-p-bottom-lg">
+        <nav class="rvt-flex rvt-items-center" aria-label="Breadcrumb">
+          <ol class="rvt-breadcrumbs rvt-grow-1">
+            <li><a href="https://brichwin.pages.iu.edu">Home</a></li>
+            <li><a href="https://brichwin.pages.iu.edu/bookmarklets">Bookmarklets</a></li>
+            <li aria-current="page">Braille Math Input</li>
+          </ol>
+        </nav>
+        <h1 class="rvt-m-top-xs">Braille Math Input for the Canvas RCE</h1>
+        <p>Type math in UEB or Nemeth braille, check it with a live preview and speech, and insert it into the Canvas Rich Content Editor as MathML. You can also put the cursor next to existing math to load it back into braille and edit it.</p>
+      </div>
     </div>
 
-    <div class="container">
-        <h2>MathML Input</h2>
-        <div class="control-group" style="margin-bottom: 15px;">
-            <label for="exampleSelect">Load Example:</label>
-            <select id="exampleSelect" onchange="loadSelectedExample()">
-                <option value="">-- Choose an example --</option>
-                <option value="0">Simple Fraction: x/y + 2</option>
-                <option value="1">Pythagorean Theorem: x² + y² = z²</option>
-                <option value="2">Quadratic Formula</option>
-                <option value="3">Integral: ∫xe^x dx</option>
-                <option value="4">Square Root: √(a + b)</option>
-                <option value="5">Matrix (2×2)</option>
-                <option value="6">Chemistry: Water (H₂O)</option>
-                <option value="7">Chemistry: Decomposition (2H₂O → 2H₂ + O₂)</option>
-            </select>
-        </div>
-        <div class="input-section">
-            <textarea id="mathmlInput" rows="6"><math><mrow><mfrac><mi>x</mi><mi>y</mi></mfrac><mo>+</mo><mn>2</mn></mrow></math></textarea>
-        </div>
-        <button onclick="processInput()">Process MathML</button>
-        <div class="output-section">
-            <div class="output-label">Rendered Math:</div>
-            <div class="output-content" id="renderedMath" style="font-size: 20px; text-align: center; padding: 20px;"></div>
-        </div>
+    <div class="rvt-layout__wrapper rvt-p-tb-xl">
+      <div class="rvt-container-xl rvt-prose rvt-flow">
+
+        <section class="rvt-card rvt-card--raised rvt-m-bottom-lg" aria-labelledby="install-heading">
+          <div class="rvt-bg-crimson rvt-color-white rvt-p-all-md">
+            <h2 class="rvt-m-all-none" id="install-heading">Install the bookmarklet</h2>
+          </div>
+          <div class="rvt-p-all-md">
+            <p><a class="bookmarklet-link" href="javascript:(()=>{import('https://cdn.jsdelivr.net/gh/brichwin/MathCATForWeb@0.8.0-alpha.1-web.6/bookmarklet/braille-math.js').then(m=>m.run()).catch(e=>alert('Braille math input could not load: '+e))})()">Braille Math Input</a></p>
+
+            <h3>With a mouse</h3>
+            <ol>
+              <li>Show your browser's bookmarks bar.</li>
+              <li>Drag the <strong>Braille Math Input</strong> link to the bookmarks bar.</li>
+            </ol>
+
+            <h3>With the keyboard or a screen reader</h3>
+            <p>Dragging isn't practical without a mouse, so create the bookmark by hand instead:</p>
+            <ol>
+              <li>Select <strong>Copy bookmarklet code</strong> below.</li>
+              <li>Bookmark any page (<span class="key">Ctrl</span>+<span class="key">D</span>, or <span class="key">Cmd</span>+<span class="key">D</span> on a Mac). Name it <strong>Braille Math Input</strong> and save it in the bookmarks bar.</li>
+              <li>Open the browser's bookmark manager (<span class="key">Ctrl</span>+<span class="key">Shift</span>+<span class="key">O</span> in Chrome and Edge), find the new bookmark, choose <strong>Edit</strong>, and paste the copied code into the URL field in place of the page address.</li>
+            </ol>
+            <div class="copy-row">
+              <button type="button" class="rvt-button" id="copy-button">Copy bookmarklet code</button>
+              <span id="copy-status" role="status"></span>
+            </div>
+            <p class="rvt-m-top-md">The code is also printed under <a href="#manual-code-heading">Manual bookmark code</a>.</p>
+          </div>
+        </section>
+
+        <section class="rvt-card rvt-card--raised rvt-m-bottom-lg" aria-labelledby="run-heading">
+          <div class="rvt-bg-orange-000 rvt-color-black-500 rvt-p-all-md">
+            <h2 class="rvt-m-all-none" id="run-heading">Running it</h2>
+          </div>
+          <div class="rvt-p-all-md">
+            <ol>
+              <li>Open a Canvas page, assignment, discussion or quiz in edit mode, and place the cursor in the Rich Content Editor where the math should go.</li>
+              <li>Run the bookmarklet:
+                <ul>
+                  <li><strong>Mouse:</strong> select <strong>Braille Math Input</strong> on the bookmarks bar.</li>
+                  <li><strong>Keyboard, Chrome and Edge:</strong> press <span class="key">Alt</span>+<span class="key">Shift</span>+<span class="key">B</span> to move to the bookmarks bar, use the arrow keys to reach <strong>Braille Math Input</strong>, and press <span class="key">Enter</span>.</li>
+                  <li><strong>Keyboard, Safari:</strong> open the <strong>Bookmarks</strong> menu from the menu bar and choose <strong>Braille Math Input</strong>.</li>
+                </ul>
+              </li>
+              <li>The <strong>Braille math input</strong> dialog opens with the cursor in the braille box.</li>
+            </ol>
+            <div class="callout">
+              <p class="rvt-m-all-none"><strong>Then use the shortcut.</strong> Once the bookmarklet has run on a page, <span class="key">Alt</span>+<span class="key">Shift</span>+<span class="key">M</span> (<span class="key">Option</span>+<span class="key">Shift</span>+<span class="key">M</span> on a Mac) reopens the dialog from the editor without going back to the bookmarks bar. It keeps working, including in editors that appear later such as discussion replies, until you reload the page or Canvas loads a new one. Then run the bookmarklet once more.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="rvt-card rvt-card--raised rvt-m-bottom-lg" aria-labelledby="use-heading">
+          <div class="rvt-bg-orange-000 rvt-color-black-500 rvt-p-all-md">
+            <h2 class="rvt-m-all-none" id="use-heading">How to use it</h2>
+          </div>
+          <div class="rvt-p-all-md">
+            <h3>Add new math</h3>
+            <ol>
+              <li>Choose the braille code: <strong>UEB</strong> or <strong>Nemeth</strong>.</li>
+              <li>Type the math in the <strong>Math in braille</strong> box. You can chord with six keys, type ASCII braille, or enter Unicode braille (see <a href="#typing-heading">Three ways to type braille</a>).</li>
+              <li>Check the result. As you type, the dialog shows the input as braille cells, a rendered preview, the spoken form, and the MathML (under <strong>MathML</strong>).</li>
+              <li>Turn on <strong>Display math (block)</strong> if the math should sit on its own line.</li>
+              <li>Press <span class="key">Enter</span> or select <strong>Insert</strong>. The math goes in at the cursor and focus returns to the editor.</li>
+            </ol>
+
+            <h3>Edit existing math</h3>
+            <ol>
+              <li>In the editor, put the cursor inside the math, select it, or place the cursor directly after it.</li>
+              <li>Run the bookmarklet or press the shortcut. The dialog says <q>Editing the math next to the cursor</q> and loads the math as braille in the chosen code.</li>
+              <li>Make your changes and press <span class="key">Enter</span> or select <strong>Replace</strong>. The old math is replaced and the cursor goes right after the new math.</li>
+            </ol>
+            <p>Older Canvas equation images (made with the Canvas equation editor) can be edited the same way. The tool reads the image's LaTeX, and <strong>Replace</strong> swaps the image for MathML.</p>
+
+            <h3>Cancel or undo</h3>
+            <p>Press <span class="key">Escape</span> or select <strong>Cancel</strong> to close the dialog without changing anything. After inserting or replacing, a single Undo in the editor (<span class="key">Ctrl</span>+<span class="key">Z</span>, or <span class="key">Cmd</span>+<span class="key">Z</span> on a Mac) reverses the change.</p>
+          </div>
+        </section>
+
+        <section class="rvt-card rvt-card--raised rvt-m-bottom-lg" aria-labelledby="typing-heading">
+          <div class="rvt-bg-orange-000 rvt-color-black-500 rvt-p-all-md">
+            <h2 class="rvt-m-all-none" id="typing-heading">Three ways to type braille</h2>
+          </div>
+          <div class="rvt-p-all-md">
+            <h3>Six-key entry</h3>
+            <p>With <strong>Six-key entry</strong> checked, the keyboard works like a Perkins brailler. Press the keys for a cell together and release them; the cell is entered when all keys are up.</p>
+            <div class="six-key" role="group" aria-label="Six-key layout">
+              <div class="six-key__hand">
+                <div class="six-key__hand-title">Left hand</div>
+                <div class="six-key__keys">
+                  <div class="six-key__key"><span class="six-key__letter">S</span><span class="six-key__dot">dot 3</span></div>
+                  <div class="six-key__key"><span class="six-key__letter">D</span><span class="six-key__dot">dot 2</span></div>
+                  <div class="six-key__key"><span class="six-key__letter">F</span><span class="six-key__dot">dot 1</span></div>
+                </div>
+              </div>
+              <div class="six-key__hand">
+                <div class="six-key__hand-title">Right hand</div>
+                <div class="six-key__keys">
+                  <div class="six-key__key"><span class="six-key__letter">J</span><span class="six-key__dot">dot 4</span></div>
+                  <div class="six-key__key"><span class="six-key__letter">K</span><span class="six-key__dot">dot 5</span></div>
+                  <div class="six-key__key"><span class="six-key__letter">L</span><span class="six-key__dot">dot 6</span></div>
+                </div>
+              </div>
+            </div>
+            <p><span class="key">Space</span> by itself enters a blank cell, and <span class="key">Backspace</span> deletes a cell. The keys go by position on the keyboard, so the layout is the same on any keyboard language. While six-key entry is on, other letter keys don't type.</p>
+
+            <h3>ASCII braille</h3>
+            <p>Uncheck <strong>Six-key entry</strong> and type North American ASCII braille. For example, <code>?1/2#</code> in Nemeth is one half. The <strong>As braille</strong> line shows the cells your typing became.</p>
+
+            <h3>Unicode braille and braille displays</h3>
+            <p>Unicode braille characters (such as <span class="braille" lang="en">⠹⠂⠌⠆⠼</span>) can be typed or pasted in either mode. Text that a screen reader sends from a braille display's keyboard gets through even when six-key entry is on.</p>
+          </div>
+        </section>
+
+        <section class="rvt-card rvt-card--raised rvt-m-bottom-lg" aria-labelledby="examples-heading">
+          <div class="rvt-bg-orange-000 rvt-color-black-500 rvt-p-all-md">
+            <h2 class="rvt-m-all-none" id="examples-heading">Examples</h2>
+          </div>
+          <div class="rvt-p-all-md">
+            <div class="rvt-table-wrapper" tabindex="0" role="region" aria-label="Examples table">
+              <table class="examples">
+                <caption class="rvt-sr-only">Example input in each braille code, with the speech the tool produces</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Math</th>
+                    <th scope="col">Code</th>
+                    <th scope="col">Braille</th>
+                    <th scope="col">ASCII braille</th>
+                    <th scope="col">Speech</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><math><mfrac><mn>1</mn><mn>2</mn></mfrac></math></td>
+                    <td>Nemeth</td>
+                    <td><span class="braille">⠹⠂⠌⠆⠼</span></td>
+                    <td><code>?1/2#</code></td>
+                    <td>1 half</td>
+                  </tr>
+                  <tr>
+                    <td><math><msup><mi>x</mi><mn>2</mn></msup><mo>+</mo><mn>1</mn></math></td>
+                    <td>Nemeth</td>
+                    <td><span class="braille">⠭⠘⠆⠐⠬⠂</span></td>
+                    <td><code>X^2"+1</code></td>
+                    <td>x squared plus 1</td>
+                  </tr>
+                  <tr>
+                    <td><math><msup><mi>x</mi><mn>2</mn></msup><mo>+</mo><mn>1</mn></math></td>
+                    <td>UEB</td>
+                    <td><span class="braille">⠭⠰⠔⠼⠃⠐⠖⠼⠁</span></td>
+                    <td><code>X;9#B"6#A</code></td>
+                    <td>x squared plus 1</td>
+                  </tr>
+                  <tr>
+                    <td><math><msqrt><mi>b</mi></msqrt></math></td>
+                    <td>Nemeth</td>
+                    <td><span class="braille">⠜⠃⠻</span></td>
+                    <td><code>&gt;B]</code></td>
+                    <td>the square root of b</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Switching between UEB and Nemeth in the dialog converts whatever is in the box to the other code.</p>
+          </div>
+        </section>
+
+        <section class="rvt-card rvt-card--raised rvt-m-bottom-lg" aria-labelledby="settings-heading">
+          <div class="rvt-bg-orange-000 rvt-color-black-500 rvt-p-all-md">
+            <h2 class="rvt-m-all-none" id="settings-heading">Keys and settings</h2>
+          </div>
+          <div class="rvt-p-all-md">
+            <div class="rvt-table-wrapper" tabindex="0" role="region" aria-label="Keys in the dialog">
+              <table>
+                <caption>Keys</caption>
+                <thead>
+                  <tr><th scope="col">Key</th><th scope="col">What it does</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td><span class="key">Enter</span></td><td>Insert the math, or replace the math being edited</td></tr>
+                  <tr><td><span class="key">Escape</span></td><td>Close without changing anything</td></tr>
+                  <tr><td><span class="key">Alt</span>+<span class="key">Shift</span>+<span class="key">M</span><br>(<span class="key">Option</span>+<span class="key">Shift</span>+<span class="key">M</span> on a Mac)</td><td>Reopen the dialog after the bookmarklet has run on the page</td></tr>
+                  <tr><td><span class="key">S</span> <span class="key">D</span> <span class="key">F</span> <span class="key">J</span> <span class="key">K</span> <span class="key">L</span></td><td>Dots 3, 2, 1, 4, 5, 6 when six-key entry is on</td></tr>
+                  <tr><td><span class="key">Space</span></td><td>Blank cell when six-key entry is on</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="rvt-table-wrapper rvt-m-top-lg" tabindex="0" role="region" aria-label="Dialog settings">
+              <table>
+                <caption>Settings</caption>
+                <thead>
+                  <tr><th scope="col">Setting</th><th scope="col">What it does</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>Braille code</td><td>UEB or Nemeth, for both typing and loading existing math</td></tr>
+                  <tr><td>Six-key entry</td><td>Use S D F J K L as a braille keyboard</td></tr>
+                  <tr><td>Announce dots</td><td>Screen readers announce each chorded cell, for example <q>dots 1 4 5 6</q></td></tr>
+                  <tr><td>Announce speech after a pause</td><td>Screen readers read the expression aloud when you stop typing</td></tr>
+                  <tr><td>Display math (block)</td><td>Insert the math on its own line instead of inline with text</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Settings are remembered in this browser.</p>
+          </div>
+        </section>
+
+        <section class="rvt-card rvt-card--raised rvt-m-bottom-lg" aria-labelledby="limits-heading">
+          <div class="rvt-bg-orange-000 rvt-color-black-500 rvt-p-all-md">
+            <h2 class="rvt-m-all-none" id="limits-heading">Limits to keep in mind</h2>
+          </div>
+          <div class="rvt-p-all-md">
+            <ul>
+              <li>Only UEB and Nemeth are supported.</li>
+              <li>The bookmarklet has to run once on each page load before the keyboard shortcut works.</li>
+              <li>Math loaded for editing is re-brailled by MathCAT, so it may not match exactly how it was first typed, even though the math is the same.</li>
+              <li>MathCAT's braille reader is new, and a few things it brailles are read back as different math. For example, <em>a</em><em>c</em> written next to each other in Nemeth is read back as the word <q>ac</q> (spoken <q>acres</q> after a number). When you load math to edit, the dialog checks for this and shows a <q>Check before replacing</q> message. If you don't change the braille, <strong>Replace</strong> keeps the original math exactly.</li>
+              <li>Editing a Canvas equation image replaces it with MathML; Undo brings the image back.</li>
+              <li>Canvas cleans up MathML when a page is saved. Check the saved page to make sure the math looks and reads as expected.</li>
+              <li>The braille back-translation comes from an early preview release of MathCAT (0.8.0-alpha). Please report anything that converts incorrectly.</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="rvt-card rvt-card--raised rvt-m-bottom-lg" aria-labelledby="how-heading">
+          <div class="rvt-bg-orange-000 rvt-color-black-500 rvt-p-all-md">
+            <h2 class="rvt-m-all-none" id="how-heading">How it works</h2>
+          </div>
+          <div class="rvt-p-all-md">
+            <p>The bookmarklet loads a WebAssembly build of <a href="https://github.com/daisy/MathCAT">MathCAT</a>, by Neil Soiffer and the DAISY Consortium, which converts braille to MathML and MathML to speech and braille. Everything runs in your browser: your math is not sent to any server. The program files come from <code>cdn.jsdelivr.net</code>, and the preview loads MathJax 2.7.7 from <code>cdnjs.cloudflare.com</code>, the same MathJax version Canvas uses.</p>
+            <p>The source is in <a href="https://github.com/brichwin/MathCATForWeb">MathCATForWeb on GitHub</a>.</p>
+          </div>
+        </section>
+
+        <section class="rvt-card rvt-card--raised rvt-m-bottom-lg" aria-labelledby="manual-code-heading">
+          <div class="rvt-bg-orange-000 rvt-color-black-500 rvt-p-all-md">
+            <h2 class="rvt-m-all-none" id="manual-code-heading">Manual bookmark code</h2>
+          </div>
+          <div class="rvt-p-all-md">
+            <p>Use this if you are creating the bookmark by hand instead of dragging the link above.</p>
+            <code class="long-snippet" id="bookmarklet-code">javascript:(()=>{import('https://cdn.jsdelivr.net/gh/brichwin/MathCATForWeb@0.8.0-alpha.1-web.6/bookmarklet/braille-math.js').then(m=>m.run()).catch(e=>alert('Braille math input could not load: '+e))})()</code>
+            <p>To use a different shortcut key, change <code>m.run()</code> to, for example, <code>m.run({shortcut:'Alt+Shift+K'})</code>.</p>
+          </div>
+        </section>
+      </div>
     </div>
+  </main>
 
-    <div class="container">
-        <h2>Output</h2>
-        <div class="output-section">
-            <div class="output-label">Spoken Text:</div>
-            <div class="output-content" id="spokenOutput"></div>
+  <footer class="rvt-footer-base rvt-footer-base--light">
+    <div class="rvt-container-xl">
+      <div class="rvt-footer-base__inner">
+        <div class="rvt-footer-base__logo">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+            <polygon fill="currentColor" points="15.3 3.19 15.3 5 16.55 5 16.55 15.07 13.9 15.07 13.9 1.81 15.31 1.81 15.31 0 8.72 0 8.72 1.81 10.12 1.81 10.12 15.07 7.45 15.07 7.45 5 8.7 5 8.7 3.19 2.5 3.19 2.5 5 3.9 5 3.9 16.66 6.18 18.98 10.12 18.98 10.12 21.67 8.72 21.67 8.72 24 15.3 24 15.3 21.67 13.9 21.67 13.9 18.98 17.82 18.98 20.09 16.66 20.09 5 21.5 5 21.5 3.19 15.3 3.19"></polygon>
+          </svg>
         </div>
-        <div class="output-section">
-            <div class="output-label">Braille:</div>
-            <div class="output-content" id="brailleOutput"></div>
-        </div>
-        <div class="output-section" id="errorOutput" style="display:none;">
-            <div class="error" id="errorContent"></div>
-        </div>
-        <div class="output-section">
-            <div class="output-label">Canonical MathML:</div>
-            <div class="output-content" id="canonicalOutput"></div>
-        </div>
+        <ul class="rvt-footer-base__list">
+          <li class="rvt-footer-base__item"><a class="rvt-footer-base__link" href="https://accessibility.iu.edu/assistance/">Accessibility</a></li>
+          <li class="rvt-footer-base__item"><a class="rvt-footer-base__link" href="#0">Privacy Notice</a></li>
+          <li class="rvt-footer-base__item"><a class="rvt-footer-base__link" href="#0">Copyright</a> © 2026 The Trustees of <a class="rvt-footer-base__link" href="https://www.iu.edu">Indiana University</a></li>
+        </ul>
+      </div>
     </div>
+  </footer>
 
-    <script type="module">
-        import init, { MathCAT as mathCAT } from './pkg/mathcat_web.js'
-
-        let initialized = false;
-
-        async function initialize() {
-            if (initialized) return;
-            
-            await init();
-            mathCAT.setRulesDir('Rules');
-            initialized = true;
-            
-            document.getElementById('version').textContent = `MathCAT Version: ${mathCAT.getVersion()}`;
-            
-            // Set initial preferences
-            updatePreferences();
-            
-            // Add event listeners for preference changes
-            document.getElementById('language').addEventListener('change', updatePreferences);
-            document.getElementById('speechStyle').addEventListener('change', updatePreferences);
-            document.getElementById('verbosity').addEventListener('change', updatePreferences);
+  <script>
+    (() => {
+      const button = document.getElementById('copy-button');
+      const status = document.getElementById('copy-status');
+      const code = document.getElementById('bookmarklet-code').textContent.trim();
+      button.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(code);
+          status.textContent = 'Copied. Paste it into the bookmark’s URL field.';
+        } catch {
+          const range = document.createRange();
+          range.selectNodeContents(document.getElementById('bookmarklet-code'));
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+          status.textContent = 'Copying is blocked here. The code is now selected below; press Ctrl+C or Cmd+C to copy it.';
         }
-
-        function updatePreferences() {
-            try {
-                const language = document.getElementById('language').value;
-                const speechStyle = document.getElementById('speechStyle').value;
-                const verbosity = document.getElementById('verbosity').value;
-                
-                mathCAT.setPreference('Language', language);
-                mathCAT.setPreference('SpeechStyle', speechStyle);
-                mathCAT.setPreference('Verbosity', verbosity);
-                
-                // Re-process if there's existing input
-                const input = document.getElementById('mathmlInput').value.trim();
-                if (input) {
-                    processInput();
-                }
-            } catch (error) {
-                console.error('Error updating preferences:', error);
-            }
-        }
-
-        window.processInput = async function() {
-            await initialize();
-            
-            const errorOutput = document.getElementById('errorOutput');
-            const errorContent = document.getElementById('errorContent');
-            errorOutput.style.display = 'none';
-            
-            try {
-                const mathmlInput = document.getElementById('mathmlInput').value.trim();
-                
-                // Set MathML and get canonical form
-                const canonical = mathCAT.setMathML(mathmlInput);
-                document.getElementById('canonicalOutput').textContent = canonical;
-                
-                // Render MathML using MathJax
-                const renderedMath = document.getElementById('renderedMath');
-                renderedMath.innerHTML = mathmlInput;
-                if (window.MathJax) {
-                    MathJax.typesetPromise([renderedMath]).catch((err) => console.error('MathJax error:', err));
-                }
-                
-                // Get spoken text
-                const spoken = mathCAT.getSpokenText();
-                document.getElementById('spokenOutput').textContent = spoken;
-                
-                // Get braille
-                const braille = mathCAT.getBraille('');
-                document.getElementById('brailleOutput').textContent = braille;
-                
-            } catch (error) {
-                errorContent.textContent = `Error: ${error}`;
-                errorOutput.style.display = 'block';
-                console.error('Error processing MathML:', error);
-            }
-        }
-
-        window.loadSelectedExample = function() {
-            const examples = [
-                '<math><mrow><mfrac><mi>x</mi><mi>y</mi></mfrac><mo>+</mo><mn>2</mn></mrow></math>',
-                '<math><mrow><msup><mi>x</mi><mn>2</mn></msup><mo>+</mo><msup><mi>y</mi><mn>2</mn></msup><mo>=</mo><msup><mi>z</mi><mn>2</mn></msup></mrow></math>',
-                '<math><mrow><mfrac><mrow><mo>−</mo><mi>b</mi><mo>±</mo><msqrt><mrow><msup><mi>b</mi><mn>2</mn></msup><mo>−</mo><mn>4</mn><mi>a</mi><mi>c</mi></mrow></msqrt></mrow><mrow><mn>2</mn><mi>a</mi></mrow></mfrac></mrow></math>',
-                '<math><mrow><mo>∫</mo><mi>x</mi><msup><mi>e</mi><mi>x</mi></msup><mo>d</mo><mi>x</mi></mrow></math>',
-                '<math><msqrt><mrow><mi>a</mi><mo>+</mo><mi>b</mi></mrow></msqrt></math>',
-                '<math><mrow><mo>(</mo><mtable><mtr><mtd><mn>1</mn></mtd><mtd><mn>2</mn></mtd></mtr><mtr><mtd><mn>3</mn></mtd><mtd><mn>4</mn></mtd></mtr></mtable><mo>)</mo></mrow></math>',
-                '<math><mrow intent=":chemical-formula"><mmultiscripts><mi mathvariant="normal" intent=":chemical-element">H</mi><mn>2</mn><mrow/></mmultiscripts><mi mathvariant="normal" intent=":chemical-element">O</mi></mrow></math>',
-                '<math><mrow intent=":chemical-equation"><mrow intent=":chemical-equation"><mn>2</mn><mo>&#x2062;</mo><mrow intent=":chemical-equation"><mmultiscripts intent=":chemical-formula"><mi mathvariant="normal" intent=":chemical-element">H</mi><mn>2</mn><mrow/></mmultiscripts><mo>&#x2063;</mo><mi mathvariant="normal" intent=":chemical-element">O</mi></mrow></mrow><mo>⟶</mo><mrow intent=":chemical-equation"><mrow intent=":chemical-equation"><mn>2</mn><mo>&#x2062;</mo><mmultiscripts intent=":chemical-formula"><mi mathvariant="normal" intent=":chemical-element">H</mi><mn>2</mn><mrow/></mmultiscripts></mrow><mo>+</mo><mmultiscripts intent=":chemical-formula"><mi mathvariant="normal" intent=":chemical-element">O</mi><mn>2</mn><mrow/></mmultiscripts></mrow></mrow></math>'
-            ];
-            
-            const select = document.getElementById('exampleSelect');
-            const index = parseInt(select.value);
-            
-            if (index >= 0 && index < examples.length) {
-                document.getElementById('mathmlInput').value = examples[index];
-                processInput();
-            }
-        }
-
-        // Initialize on page load
-        initialize();
-    </script>
+      });
+    })();
+  </script>
 </body>
 </html>

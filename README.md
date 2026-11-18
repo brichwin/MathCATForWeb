@@ -149,6 +149,7 @@ A native smoke test runs the same calls without a browser: `cargo test --release
 - **Three ways to type:** six-key chording (F D S J K L = dots 1–6, Space = blank cell), ASCII braille (`?1/2#`), or Unicode braille. Input from a screen reader or braille display gets through even when six-key entry is on.
 - **Live output:** a preview rendered by an isolated MathJax 2.7.7 using `TeX-MML-AM_SVG` (the same build and config Canvas uses), MathCAT speech, and the MathML. If you choose, the dialog announces the dots of each chord and reads the speech after a pause.
 - **Editing existing math:** if the cursor is inside or just after `<math>` or a Canvas equation image (`img.equation_image`), that math is converted to braille in the chosen code and loaded for editing, and **Replace** swaps it out. Equation images are read from their LaTeX and replaced with MathML.
+- **Round-trip safeguard:** MathCAT's braille reader is an early release, and some braille it writes reads back as different math (see [Known MathCAT issues](#known-mathcat-issues)). When math is loaded for editing, the dialog reads the braille back and warns if the result differs from the original. If the braille isn't edited, **Replace** keeps the original math exactly: an unchanged `<math>` is left alone, and an equation image becomes MathML converted directly from its LaTeX.
 - **Switching codes** translates what's in the box between UEB and Nemeth.
 - **Enter** inserts or replaces, **Escape** cancels, and a single Undo in the editor reverts the change. Settings are stored in `localStorage` under `atac_iu_edu_braillemath_config`.
 
@@ -182,3 +183,63 @@ A bookmarklet can't run on its own when a page loads, so a reload or a full Canv
 ### Testing locally
 
 `bookmarklet/test.html` is a TinyMCE 5 page configured to keep MathML. It includes an existing fraction and a Canvas-style equation image. Serve the repo (`python3 -m http.server`) and open `/bookmarklet/test.html`. The query parameters `?tinymce=URL&mathjax=URL` point it at local copies of TinyMCE and MathJax.
+
+## Braille Math Input for Word (add-in)
+
+`word-addin/` is a Microsoft Word add-in with the same braille input as the bookmarklet. It opens as a task pane from **Insert → Braille Math Input**:
+
+- **Insert:** type UEB or Nemeth braille (six-key chording, ASCII braille or Unicode braille), check the speech and preview, and press **Enter**. The math is inserted at the cursor as a native Word equation (OMML).
+- **Edit:** put the cursor in an equation, or select one, and choose **Edit equation at cursor**. The equation is converted to braille in the chosen code; edit it and press **Enter** to replace it. If a paragraph has more than one equation, select the one to edit. The same round-trip safeguard as the bookmarklet applies.
+- **Display equation** inserts the math on its own line (`m:oMathPara`).
+
+### No third-party code
+
+The add-in's only outside code is Office.js, which Office add-ins must load from Microsoft's CDN. Converting between MathML and Word's OMML is done by our own modules, which use only the browser's built-in XML parser:
+
+- `word-addin/mathml2omml.js`: MathML → OMML. Covers the MathML that MathCAT's parser produces and common MathML from other tools: tokens, fractions, radicals, scripts, under/over, n-ary operators (∑ ∫ …), fenced groups (m:d), functions (m:func), accents, bars, braces, matrices, phantoms and boxes.
+- `word-addin/omml2mathml.js`: OMML → MathML. Covers what Word's equation editor creates: runs (including m:sty and normal text), fractions (bar, no-bar, skewed, linear), radicals, scripts and pre-scripts, n-ary operators, delimiters with separators, functions, accents, bars, group characters, limits, boxes, phantoms, matrices and equation arrays.
+- `word-addin/ooxml.js`: wraps OMML in the package Word's `insertOoxml()` expects, and finds and replaces equations in what `getOoxml()` returns.
+
+Unsupported constructs keep their contents and are reported as warnings rather than dropped silently.
+
+### Hosting
+
+The add-in must be served over HTTPS, with `word-addin/` and `pkg/` side by side as in this repo. `manifest.xml` assumes:
+
+```
+https://brichwin.pages.iu.edu/mathcat/
+├── pkg/            (mathcat_web.js, mathcat_web_bg.wasm)
+└── word-addin/     (manifest.xml, taskpane.html, taskpane.js, taskpane.css, commands.html,
+                     mathml2omml.js, omml2mathml.js, ooxml.js, assets/)
+```
+
+To host it somewhere else, replace `https://brichwin.pages.iu.edu/mathcat/word-addin/` throughout `manifest.xml`.
+
+### Installing for testing (sideloading)
+
+Microsoft moves these menus around, so see [Sideload Office Add-ins for testing](https://learn.microsoft.com/office/dev/add-ins/testing/sideload-office-add-ins-for-testing) if the names below don't match:
+
+- **Word on the web:** open a document, choose **Add-ins** (on the Home or Insert tab), go to **My Add-ins**, and choose **Upload My Add-in**. Then select `manifest.xml`. The upload is kept in that browser only.
+- **Word for Mac:** copy `manifest.xml` into `~/Library/Containers/com.microsoft.Word/Data/Documents/wef/` (create the `wef` folder if needed), restart Word, then open it from **Add-ins → My Add-ins**.
+- **Word for Windows:** put `manifest.xml` in a shared network folder and add that folder under **File → Options → Trust Center → Trust Center Settings → Trusted Add-in Catalogs** with **Show in Menu** checked. Restart Word, then choose **Home → Add-ins → Advanced → Shared Folder**.
+
+If your Microsoft 365 tenant blocks uploading add-ins, an administrator can deploy the manifest to you (or everyone) from the Microsoft 365 admin center.
+
+Keyboard: in Word for Windows, **F6** moves between the document, the ribbon and the task pane.
+
+### Tests
+
+These pages run in a browser served from the repo root (for example `python3 -m http.server`):
+
+- `word-addin/test/converters.html`: 44 round trips (braille or LaTeX → MathCAT MathML → OMML → MathML, passing when MathCAT gives the same Nemeth braille, UEB braille and speech for both) and 19 equations written the way Word writes them, each checked against its expected MathCAT speech.
+- `word-addin/test/taskpane-mock.html`: the task pane running against a simulated Word (`Word.run`, `getOoxml`, `insertOoxml`) for insert, edit, replace, several equations in one paragraph, display equations and the safeguards. It simulates Word's API, not Word itself, so behavior in real Word still needs checking.
+
+As an extra check during development, every OMML equation from the round-trip set was put in a .docx and opened in LibreOffice Writer: all 44 imported as equations.
+
+## Known MathCAT issues
+
+Found with MathCAT 0.8.0-alpha.1 (`braille-parser` branch) while testing round trips. Both the bookmarklet and the Word add-in detect these and warn before replacing math.
+
+- **Nemeth: adjacent letters are read back as one word.** `<mi>a</mi><mi>c</mi>` brailles as `⠁⠉`, which the Nemeth reader returns as `<mi>ac</mi>`, spoken as "acres" after a number ("4ac" → "4 acres"). `⠁⠃` returns `<mi>ab</mi>`. UEB reads these back correctly.
+- **UEB: infinity isn't read back.** ∞ brailles in UEB as `⠼⠿`, which the UEB reader returns as `<mtext>⠿</mtext>` ("dots 1 2 3 4 5 6"). Nemeth's `⠠⠿` reads back correctly.
+- **LaTeX: `0,1` is read as one number** (`<mn>0,1</mn>`), a decimal with a comma, so the interval `[0,1)` loses its comma.
