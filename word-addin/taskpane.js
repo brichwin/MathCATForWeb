@@ -10,30 +10,65 @@ import { mathmlToOmml } from './mathml2omml.js';
 import { ommlToMathml } from './omml2mathml.js';
 import { packageForOmml, findEquations, replaceEquation } from './ooxml.js';
 
-export const VERSION = '0.1.0';
+export const VERSION = '0.1.1';
 const STORE_KEY = 'atac_iu_edu_braillemath_word';
 const CHORD_KEYS = { KeyF: 1, KeyD: 2, KeyS: 3, KeyJ: 4, KeyK: 5, KeyL: 6 };
 
 // ---------------------------------------------------------------- Word access
 
+/** Short description of an Office.js error, including which API call failed when Word says. */
+export function describeError(e) {
+  if (!e) return 'unknown error';
+  const loc = e.debugInfo && e.debugInfo.errorLocation;
+  const code = e.code || e.name || '';
+  const msg = e.message && e.message !== code ? e.message : '';
+  return [code, msg].filter(Boolean).join(': ') + (loc ? ` (at ${loc})` : '') || String(e);
+}
+
+/**
+ * Get the OOXML of a range, or null if Word refuses. Each attempt gets a fresh selection
+ * object, because objects from a failed batch can't be reused.
+ */
+async function ooxmlOf(context, label, makeRange, problems) {
+  try {
+    const range = makeRange(context.document.getSelection());
+    const xml = range.getOoxml();
+    await context.sync();
+    return { range, xml: xml.value };
+  } catch (e) {
+    problems.push(`${label}: ${describeError(e)}`);
+    return null;
+  }
+}
+
+// Places to look for the equation, in order. Word for Mac (and possibly others) can refuse
+// getOoxml() on a selection that is inside an equation, so fall back to the paragraph.
+const LOOK_IN = [
+  ['selection', sel => sel],
+  ['paragraph', sel => sel.paragraphs.getFirst()],
+  ['paragraph content', sel => sel.paragraphs.getFirst().getRange('Content')],
+  ['whole paragraph', sel => sel.paragraphs.getFirst().getRange('Whole')],
+];
+
 /**
  * Find the equation to edit: one in the selection, or else the only one in the cursor's paragraph.
- * Must be called inside Word.run. Returns { range, doc, equation } or { count, scope }.
+ * Must be called inside Word.run. Returns { range, doc, equation, scope } or { count, scope },
+ * plus `problems`: the Word calls that failed along the way.
  */
 async function locateEquation(context) {
-  const sel = context.document.getSelection();
-  const selXml = sel.getOoxml();
-  await context.sync();
-  let found = findEquations(selXml.value);
-  if (found.equations.length === 1) return { range: sel, doc: found.doc, equation: found.equations[0], scope: 'selection' };
-  if (found.equations.length > 1) return { count: found.equations.length, scope: 'selection' };
-
-  const para = sel.paragraphs.getFirst().getRange('Content');
-  const paraXml = para.getOoxml();
-  await context.sync();
-  found = findEquations(paraXml.value);
-  if (found.equations.length === 1) return { range: para, doc: found.doc, equation: found.equations[0], scope: 'paragraph' };
-  return { count: found.equations.length, scope: 'paragraph' };
+  const problems = [];
+  for (const [label, make] of LOOK_IN) {
+    const got = await ooxmlOf(context, label, make, problems);
+    if (!got) continue;
+    let found;
+    try { found = findEquations(got.xml); } catch (e) { problems.push(`${label}: ${e.message}`); continue; }
+    if (found.equations.length === 1) return { range: got.range, doc: found.doc, equation: found.equations[0], scope: label, problems };
+    if (found.equations.length > 1) return { count: found.equations.length, scope: label, problems };
+    if (label !== 'selection') return { count: 0, scope: label, problems };   // the paragraph has none
+  }
+  const err = new Error('Word would not give the add-in the text around the cursor. ' + problems.join('; '));
+  err.problems = problems;
+  throw err;
 }
 
 const word = {
@@ -49,9 +84,24 @@ const word = {
   /** Insert an equation after the selection (at the cursor if nothing is selected). */
   async insert(omml) {
     return Word.run(async context => {
-      const at = context.document.getSelection().getRange('End');
-      at.insertOoxml(packageForOmml(omml), 'Replace');
-      await context.sync();
+      const pkg = packageForOmml(omml);
+      const problems = [];
+      const attempts = [
+        ['after the selection', sel => sel.getRange('End').insertOoxml(pkg, 'Replace')],
+        ['end of the paragraph', sel => sel.paragraphs.getFirst().insertOoxml(pkg, 'End')],
+      ];
+      for (const [label, run] of attempts) {
+        try {
+          run(context.document.getSelection());
+          await context.sync();
+          return;
+        } catch (e) {
+          problems.push(`${label}: ${describeError(e)}`);
+        }
+      }
+      const err = new Error('Word would not insert at the cursor. ' + problems.join('; '));
+      err.problems = problems;
+      throw err;
     });
   },
   /** Replace the equation at the cursor. Returns false if there isn't exactly one there any more. */
@@ -310,7 +360,7 @@ export async function start(root, opts = {}) {
   const loadEquation = async () => {
     err.textContent = '';
     let found;
-    try { found = await api.readEquation(); } catch (e) { err.textContent = 'Could not read the document: ' + e; return; }
+    try { found = await api.readEquation(); } catch (e) { err.textContent = 'Could not read the document. ' + (e.problems ? e.message : describeError(e)); return; }
     if (!found.mathml) {
       err.textContent = found.count > 1
         ? `This paragraph has ${found.count} equations. Select the one to edit (for example with Shift+Right Arrow), then choose Edit equation at cursor.`
@@ -368,7 +418,7 @@ export async function start(root, opts = {}) {
         say('Equation inserted.');
       }
     } catch (e) {
-      err.textContent = 'Word could not take the equation: ' + e;
+      err.textContent = 'Word could not take the equation: ' + (e.problems ? e.message : describeError(e));
       return;
     }
     $('#bm-cursor').textContent = warnings.length ? 'Note: ' + warnings.join(' ') : '';
